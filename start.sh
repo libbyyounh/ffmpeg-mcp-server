@@ -7,14 +7,6 @@ set -e
 echo "🎬 FFmpeg MCP Server - Quick Start"
 echo "=================================="
 
-
-# 检查 Docker Compose 是否安装
-if ! command -v docker compose &> /dev/null; then
-    echo "❌ Docker Compose is not installed. Please install Docker Compose first."
-    echo "   Visit: https://docs.docker.com/compose/install/"
-    exit 1
-fi
-
 # 创建必要的目录
 echo "📁 Creating directories..."
 mkdir -p videos output
