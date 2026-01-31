@@ -36,3 +36,9 @@ services:
         reservations:
           cpus: '1'
           memory: 512M
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    external: true
