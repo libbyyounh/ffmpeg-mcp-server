@@ -318,52 +318,58 @@ def main():
     import os
     from starlette.staticfiles import StaticFiles
     
-    # 尝试把 /output 和 /videos 挂载为静态目录
-    try:
-        # 确保目录存在
-        output_abs = os.path.abspath("output")
-        videos_abs = os.path.abspath("videos")
-        os.makedirs(output_abs, exist_ok=True)
-        os.makedirs(videos_abs, exist_ok=True)
-        
-        # FastMCP.sse_app 是一个方法，调用它返回 Starlette 实例
-        app = mcp.sse_app()
-        
-        # 优先使用根目录下的目录，否则使用当前目录下的
-        final_output = "/output" if os.path.exists("/output") else output_abs
-        final_videos = "/videos" if os.path.exists("/videos") else videos_abs
-        
-        app.mount("/output", StaticFiles(directory=final_output), name="output")
-        app.mount("/videos", StaticFiles(directory=final_videos), name="videos")
-            
-        print(f"Static files mounted: {final_output} -> /output, {final_videos} -> /videos")
-    except Exception as e:
-        print(f"Failed to mount static files: {e}")
-
     # 支持通过环境变量配置传输方式和端口
     transport = os.getenv('MCP_TRANSPORT', 'stdio')
     host = os.getenv('MCP_HOST', '0.0.0.0')
     port = int(os.getenv('MCP_PORT', '8032'))
 
     # 针对较新版本 MCP SDK 的安全配置 (DNS Rebinding Protection)
-    # 尝试通过代码禁用校验，以解决 Docker 环境中的 'Invalid Host header' 问题
+    # 必须在调用 mcp.sse_app() 之前配置，因为 middleware 在创建时就生成了
     if hasattr(mcp, "settings"):
         try:
-            # 尝试获取并更新 transport_security 设置
             security = getattr(mcp.settings, "transport_security", None)
             if security:
                 security.enable_dns_rebinding_protection = False
                 security.allowed_hosts = ["*"]
-                print("Disabled DNS rebinding protection via mcp.settings.transport_security")
+                print("Configured security: DNS rebinding protection disabled, allowed_hosts=['*']")
         except Exception as e:
-            print(f"Note: Could not auto-configure transport security: {e}")
-    
+            print(f"Note: Could not configure transport security: {e}")
+
+    # 针对 SSE 模式，我们需要手动处理 app 和挂载
+    app = None
+    if transport == 'sse':
+        try:
+            # FastMCP.sse_app 是一个方法，调用它返回 Starlette 实例
+            app = mcp.sse_app()
+            
+            # 确保目录存在
+            output_abs = os.path.abspath("output")
+            videos_abs = os.path.abspath("videos")
+            os.makedirs(output_abs, exist_ok=True)
+            os.makedirs(videos_abs, exist_ok=True)
+            
+            # 优先使用根目录下的目录 (Docker 卷挂载)，否则使用当前目录下的
+            final_output = "/output" if os.path.exists("/output") else output_abs
+            final_videos = "/videos" if os.path.exists("/videos") else videos_abs
+            
+            app.mount("/output", StaticFiles(directory=final_output), name="output")
+            app.mount("/videos", StaticFiles(directory=final_videos), name="videos")
+                
+            print(f"Static files mounted: {final_output} -> /output, {final_videos} -> /videos")
+        except Exception as e:
+            print(f"Failed to setup SSE app or mount static files: {e}")
+            # 如果创建失败，回退到让 mcp.run 自己去创建（虽然可能没挂载成功）
+            app = None
+
     print(f"Server running on transport: {transport}")
     if transport == 'sse':
-        print(f"SSE server listening on http://{host}:{port}")
-        mcp.settings.host = host
-        mcp.settings.port = port
-        mcp.run(transport='sse')
+        import uvicorn
+        if app:
+            print(f"SSE server starting with modified app on http://{host}:{port}")
+            uvicorn.run(app, host=host, port=port)
+        else:
+            print(f"SSE server fallback to mcp.run on http://{host}:{port}")
+            mcp.run(transport='sse')
     else:
         print("STDIO mode")
         mcp.run(transport='stdio')
