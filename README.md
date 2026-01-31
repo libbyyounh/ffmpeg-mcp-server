@@ -128,7 +128,20 @@ cp .env.example .env
 Available environment variables:
 - `MCP_TRANSPORT`: `stdio` (default) or `sse` (for HTTP server)
 - `MCP_HOST`: Server host (default: `0.0.0.0`)
-- `MCP_PORT`: Server port (default: `8032`)
+- `MCP_PORT`: SSE 端口 (默认 8032)
+- `MCP_AUTH_TOKEN`: 设置后启用 Token 认证，客户端需带上 `Authorization: Bearer <token>`
+- `MCP_EXTERNAL_URL`: 服务器的基础公开 URL，用于工具返回文件地址
+
+### Token 认证使用方法
+如果您在 `.env` 中设置了 `MCP_AUTH_TOKEN`，所有请求（包括视频播放）都需要携带认证头。
+
+**cURL 示例**:
+```bash
+curl -H "Authorization: Bearer your-token" http://localhost:8032/sse
+```
+
+**Claude Desktop 配置**:
+MCP 目前的 SSE 规范尚未完全标准化认证字段，如果您的客户端不支持自定义 Header，建议通过前置代理（如 Nginx）处理或暂时留空此项。
 
 ### Using the HTTP API
 

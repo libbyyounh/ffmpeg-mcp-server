@@ -12,6 +12,37 @@ import ffmpeg_mcp.cut_video as cut_video
 # Create an MCP server
 mcp = FastMCP("ffmpeg-mcp")
 
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
+from starlette.requests import Request
+
+class TokenAuthMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, token: str):
+        super().__init__(app)
+        self.token = token
+
+    async def dispatch(self, request: Request, call_next):
+        # 允许健康检查、根路径以及静态资源路径 (/videos, /output) 直接访问
+        path = request.url.path
+        if path in ["/health", "/"] or path.startswith("/videos/") or path.startswith("/output/"):
+            return await call_next(request)
+
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return JSONResponse(
+                {"detail": "Missing or invalid Authorization header"}, 
+                status_code=401
+            )
+        
+        token = auth_header.split(" ")[1]
+        if token != self.token:
+            return JSONResponse(
+                {"detail": "Unauthorized"}, 
+                status_code=401
+            )
+        
+        return await call_next(request)
+
 def get_base_url():
     """获取服务器基础 URL，优先使用外部配置的 MCP_EXTERNAL_URL"""
     external_url = os.getenv('MCP_EXTERNAL_URL')
@@ -339,9 +370,17 @@ def main():
     app = None
     if transport == 'sse':
         try:
-            # FastMCP.sse_app 是一个方法，调用它返回 Starlette 实例
+            # FastMCP.sse_app 是一个方法，调用 it 返回 Starlette 实例
             app = mcp.sse_app()
             
+            # 添加 Token 认证中间件
+            auth_token = os.getenv('MCP_AUTH_TOKEN')
+            if auth_token:
+                app.add_middleware(TokenAuthMiddleware, token=auth_token)
+                print("Token authentication enabled.")
+            else:
+                print("Warning: MCP_AUTH_TOKEN not set. Running without authentication.")
+
             # 确保目录存在
             output_abs = os.path.abspath("output")
             videos_abs = os.path.abspath("videos")

@@ -14,6 +14,7 @@ services:
       - MCP_HOST=0.0.0.0
       - MCP_PORT=8032
       - MCP_EXTERNAL_URL=${MCP_EXTERNAL_URL:-http://localhost:8032}
+      - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN}
       # 允许 Docker 内部网络访问的 Host 校验设置 (针对较新版本 SDK)
       - MCP_ALLOWED_HOSTS=*
       - MCP_ENABLE_DNS_REBINDING_PROTECTION=false
