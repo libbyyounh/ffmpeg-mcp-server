@@ -77,3 +77,36 @@ def unzip_to_current_directory(zip_file_path):
     with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
         # 解压缩到当前目录
         zip_ref.extractall(current_directory)
+
+def is_url(path: str) -> bool:
+    """
+    检查路径是否为 HTTP/HTTPS URL
+    """
+    if not isinstance(path, str):
+        return False
+    return path.lower().startswith(('http://', 'https://'))
+
+def get_default_output_path(input_path: str, suffix: str = "_output") -> str:
+    """
+    为输入生成默认的输出路径。
+    如果是 URL 或不在当前目录下的文件，默认保存到 /output 目录。
+    """
+    from urllib.parse import urlparse
+    
+    # 默认输出目录
+    output_dir = "/output" if os.path.exists("/output") else os.getcwd()
+    
+    if is_url(input_path):
+        # 从 URL 获取文件名
+        parsed_url = urlparse(input_path)
+        filename = os.path.basename(parsed_url.path)
+        if not filename:
+            filename = "downloaded_video.mp4"
+    else:
+        filename = os.path.basename(input_path)
+    
+    base, ext = os.path.splitext(filename)
+    if not ext:
+        ext = ".mp4"
+        
+    return os.path.join(output_dir, f"{base}{suffix}{ext}")

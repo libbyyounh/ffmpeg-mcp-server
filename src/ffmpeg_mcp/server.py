@@ -145,6 +145,54 @@ def extract_frames_from_video(video_path,fps=0, output_folder=None, format=0, to
     """ 
     return cut_video.extract_frames_from_video(video_path, fps, output_folder, format, total_frames)
 
+@mcp.tool()
+def download_video(video_path: str):
+    """
+    下载视频文件内容（Base64 编码）。
+    用于远程客户端获取处理后的视频文件。
+    
+    参数：
+    video_path : str - 视频文件路径（绝对路径）
+    """
+    import base64
+    import mimetypes
+    
+    if not os.path.exists(video_path):
+        return {"error": f"文件不存在: {video_path}"}
+    
+    # 基本安全检查：确保文件在允许的目录下
+    abs_path = os.path.abspath(video_path)
+    # 获取项目根目录和其他允许目录
+    allowed_dirs = ["/videos", "/output", os.getcwd()]
+    is_allowed = False
+    for d in allowed_dirs:
+        if abs_path.startswith(os.path.abspath(d)):
+            is_allowed = True
+            break
+    
+    if not is_allowed:
+        return {"error": "权限拒绝：只能访问 /videos 或 /output 目录下的文件"}
+        
+    # 文件大小检查 (暂定限制 200MB)
+    file_size = os.path.getsize(abs_path)
+    if file_size > 200 * 1024 * 1024:
+        return {"error": f"文件太大 ({file_size / (1024 * 1024):.2f}MB)，超过 200MB 限制。"}
+        
+    try:
+        with open(abs_path, "rb") as f:
+            content = f.read()
+            encoded = base64.b64encode(content).decode("utf-8")
+            
+        mime_type, _ = mimetypes.guess_type(abs_path)
+        return {
+            "filename": os.path.basename(abs_path),
+            "mime_type": mime_type or "application/octet-stream",
+            "size": file_size,
+            "base64_data": encoded
+        }
+    except Exception as e:
+        return {"error": f"读取文件失败: {str(e)}"}
+
 def main():
     import os
     # 支持通过环境变量配置传输方式和端口

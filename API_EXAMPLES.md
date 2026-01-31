@@ -13,6 +13,11 @@ The MCP server exposes its tools through the standard MCP protocol over HTTP.
 
 Base URL: `http://localhost:8032`
 
+## URL-based Inputs
+
+The server now supports processing videos directly from remote URLs (HTTP/HTTPS). When using a URL and no `output_path` is specified, the result is automatically saved to the `/output` directory.
+
+
 ## Available Tools
 
 ### 1. Find Video Path
@@ -48,6 +53,20 @@ curl -X POST http://localhost:8032/message \
       "name": "get_video_info",
       "arguments": {
         "video_path": "/videos/my_video.mp4"
+      }
+    }
+  }'
+  }'
+
+# Get info from a remote URL
+curl -X POST http://localhost:8032/message \
+  -H "Content-Type: application/json" \
+  -d '{
+    "method": "tools/call",
+    "params": {
+      "name": "get_video_info",
+      "arguments": {
+        "video_path": "https://www.w3schools.com/html/mov_bbb.mp4"
       }
     }
   }'
@@ -97,6 +116,22 @@ curl -X POST http://localhost:8032/message \
         "start": -10,
         "duration": 10,
         "output_path": "/output/last_10s.mp4"
+      }
+    }
+  }'
+  }'
+
+# Clip from a remote URL
+curl -X POST http://localhost:8032/message \
+  -H "Content-Type: application/json" \
+  -d '{
+    "method": "tools/call",
+    "params": {
+      "name": "clip_video",
+      "arguments": {
+        "video_path": "https://www.w3schools.com/html/mov_bbb.mp4",
+        "start": "00:00:01",
+        "duration": 5
       }
     }
   }'
@@ -279,6 +314,46 @@ curl -X POST http://localhost:8032/message \
       }
     }
   }'
+```
+
+### 9. Download Video
+
+Retrieve the processed video file content as a Base64 encoded string.
+
+```bash
+curl -X POST http://localhost:8032/message \
+  -H "Content-Type: application/json" \
+  -d '{
+    "method": "tools/call",
+    "params": {
+      "name": "download_video",
+      "arguments": {
+        "video_path": "/output/result.mp4"
+      }
+    }
+  }'
+```
+
+**How to decode Base64 back to a video file:**
+
+**Python:**
+```python
+import base64
+
+# Assume 'result' is the JSON response from the server
+base64_data = result['result']['base64_data']
+with open("downloaded_video.mp4", "wb") as f:
+    f.write(base64.b64decode(base64_data))
+```
+
+**Node.js:**
+```javascript
+const fs = require('fs');
+
+// Assume 'result' is the JSON response from the server
+const base64Data = result.result.base64_data;
+const buffer = Buffer.from(base64Data, 'base64');
+fs.writeFileSync('downloaded_video.mp4', buffer);
 ```
 
 ## Python Client Example
