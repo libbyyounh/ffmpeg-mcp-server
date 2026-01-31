@@ -4,6 +4,10 @@ FROM python:3.11-slim
 # 设置工作目录
 WORKDIR /app
 
+# 使用清华源替换默认源
+RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list.d/debian.sources || \
+    sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list
+
 # 安装系统依赖和 FFmpeg
 RUN apt-get update && apt-get install -y \
     ffmpeg \
@@ -20,7 +24,7 @@ COPY README.md ./
 COPY src/ ./src/
 
 # 安装 uv (快速的 Python 包管理器)
-RUN pip install --no-cache-dir uv
+RUN pip install --no-cache-dir uv -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 使用 uv 安装项目依赖
 RUN uv sync
@@ -30,6 +34,8 @@ ENV MCP_TRANSPORT=sse
 ENV MCP_HOST=0.0.0.0
 ENV MCP_PORT=8032
 ENV PYTHONUNBUFFERED=1
+ENV UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+ENV PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 暴露端口
 EXPOSE 8032
