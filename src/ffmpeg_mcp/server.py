@@ -346,8 +346,17 @@ def main():
     port = int(os.getenv('MCP_PORT', '8032'))
 
     # 针对较新版本 MCP SDK 的安全配置 (DNS Rebinding Protection)
-    # 如果通过环境变量 MCP_ENABLE_DNS_REBINDING_PROTECTION=false 禁用校验
-    # SDK 会自动检测相关的环境变量
+    # 尝试通过代码禁用校验，以解决 Docker 环境中的 'Invalid Host header' 问题
+    if hasattr(mcp, "settings"):
+        try:
+            # 尝试获取并更新 transport_security 设置
+            security = getattr(mcp.settings, "transport_security", None)
+            if security:
+                security.enable_dns_rebinding_protection = False
+                security.allowed_hosts = ["*"]
+                print("Disabled DNS rebinding protection via mcp.settings.transport_security")
+        except Exception as e:
+            print(f"Note: Could not auto-configure transport security: {e}")
     
     print(f"Server running on transport: {transport}")
     if transport == 'sse':
