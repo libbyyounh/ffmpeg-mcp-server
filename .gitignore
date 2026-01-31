@@ -67,3 +67,6 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Binaries and platform-specific files
+src/ffmpeg_mcp/bin/
