@@ -344,11 +344,12 @@ curl -X POST http://localhost:8032/message \
   }'
 ```
 
-### 9. Download Video
+### 9. Retrieve Video (Download)
 
-Retrieve the processed video file content as a Base64 encoded string.
+Retrieve processed video information. By default, it returns a URL for direct access. Use `base64: true` to get the binary content.
 
 ```bash
+# Get URL only (default)
 curl -X POST http://localhost:8032/message \
   -H "Content-Type: application/json" \
   -d '{
@@ -357,6 +358,20 @@ curl -X POST http://localhost:8032/message \
       "name": "download_video",
       "arguments": {
         "video_path": "/output/result.mp4"
+      }
+    }
+  }'
+
+# Get Base64 binary data
+curl -X POST http://localhost:8032/message \
+  -H "Content-Type: application/json" \
+  -d '{
+    "method": "tools/call",
+    "params": {
+      "name": "download_video",
+      "arguments": {
+        "video_path": "/output/result.mp4",
+        "base64": true
       }
     }
   }'

@@ -197,15 +197,16 @@ def extract_frames_from_video(video_path,fps=0, output_folder=None, format=0, to
     return cut_video.extract_frames_from_video(video_path, fps, output_folder, format, total_frames)
 
 @mcp.tool()
-def download_video(video_path: str):
+def download_video(video_path: str, base64: bool = False):
     """
-    下载视频文件内容（Base64 编码）。
-    用于远程客户端获取处理后的视频文件。
+    根据路径获取视频文件。
+    默认返回可访问的远程 URL。如果 base64=True，则返回 Base64 编码的二进制数据。
     
     参数：
     video_path : str - 视频文件路径（绝对路径）
+    base64 : bool - 是否返回 Base64 编码的二进制数据，默认为 False
     """
-    import base64
+    import base64 as b64
     import mimetypes
     
     if not os.path.exists(video_path):
@@ -224,25 +225,30 @@ def download_video(video_path: str):
     if not is_allowed:
         return {"error": "权限拒绝：只能访问 /videos 或 /output 目录下的文件"}
         
-    # 文件大小检查 (暂定限制 200MB)
     file_size = os.path.getsize(abs_path)
-    if file_size > 200 * 1024 * 1024:
-        return {"error": f"文件太大 ({file_size / (1024 * 1024):.2f}MB)，超过 200MB 限制。"}
-        
-    try:
-        with open(abs_path, "rb") as f:
-            content = f.read()
-            encoded = base64.b64encode(content).decode("utf-8")
+    mime_type, _ = mimetypes.guess_type(abs_path)
+    
+    result = {
+        "filename": os.path.basename(abs_path),
+        "mime_type": mime_type or "application/octet-stream",
+        "size": file_size,
+        "path": abs_path,
+        "url": get_file_url(abs_path)
+    }
+
+    if base64:
+        # 文件大小检查 (暂定限制 200MB，仅在 Base64 模式下生效)
+        if file_size > 200 * 1024 * 1024:
+            return {"error": f"文件太大 ({file_size / (1024 * 1024):.2f}MB)，超过 200MB 限制。建议直接通过 URL 访问。"}
             
-        mime_type, _ = mimetypes.guess_type(abs_path)
-        return {
-            "filename": os.path.basename(abs_path),
-            "mime_type": mime_type or "application/octet-stream",
-            "size": file_size,
-            "base64_data": encoded
-        }
-    except Exception as e:
-        return {"error": f"读取文件失败: {str(e)}"}
+        try:
+            with open(abs_path, "rb") as f:
+                content = f.read()
+                result["base64_data"] = b64.b64encode(content).decode("utf-8")
+        except Exception as e:
+            return {"error": f"读取文件失败: {str(e)}"}
+            
+    return result
 
 @mcp.tool()
 def list_output_videos():
