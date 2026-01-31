@@ -5,7 +5,8 @@ description = "使用ffmpeg,对视频进行裁剪，拼接，滤镜等操作"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "mcp[cli]>=1.6.0"
+    "mcp[cli]>=1.6.0",
+    "requests>=2.32.5",
 ]
 classifiers = [
     "Environment :: MacOS X",

@@ -320,17 +320,23 @@ def main():
     
     # 尝试把 /output 和 /videos 挂载为静态目录
     try:
-        if os.path.exists("/output"):
-            mcp.sse_app.mount("/output", StaticFiles(directory="/output"), name="output")
-        elif os.path.exists(os.path.join(os.getcwd(), "output")):
-            mcp.sse_app.mount("/output", StaticFiles(directory=os.path.join(os.getcwd(), "output")), name="output")
+        # 确保目录存在
+        output_abs = os.path.abspath("output")
+        videos_abs = os.path.abspath("videos")
+        os.makedirs(output_abs, exist_ok=True)
+        os.makedirs(videos_abs, exist_ok=True)
+        
+        # FastMCP.sse_app 是一个方法，调用它返回 Starlette 实例
+        app = mcp.sse_app()
+        
+        # 优先使用根目录下的目录，否则使用当前目录下的
+        final_output = "/output" if os.path.exists("/output") else output_abs
+        final_videos = "/videos" if os.path.exists("/videos") else videos_abs
+        
+        app.mount("/output", StaticFiles(directory=final_output), name="output")
+        app.mount("/videos", StaticFiles(directory=final_videos), name="videos")
             
-        if os.path.exists("/videos"):
-            mcp.sse_app.mount("/videos", StaticFiles(directory="/videos"), name="videos")
-        elif os.path.exists(os.path.join(os.getcwd(), "videos")):
-            mcp.sse_app.mount("/videos", StaticFiles(directory=os.path.join(os.getcwd(), "videos")), name="videos")
-            
-        print("Static files mounted: /output and /videos")
+        print(f"Static files mounted: {final_output} -> /output, {final_videos} -> /videos")
     except Exception as e:
         print(f"Failed to mount static files: {e}")
 
@@ -342,7 +348,9 @@ def main():
     print(f"Server running on transport: {transport}")
     if transport == 'sse':
         print(f"SSE server listening on http://{host}:{port}")
-        mcp.run(transport='sse', sse_host=host, sse_port=port)
+        mcp.settings.host = host
+        mcp.settings.port = port
+        mcp.run(transport='sse')
     else:
         print("STDIO mode")
         mcp.run(transport='stdio')
