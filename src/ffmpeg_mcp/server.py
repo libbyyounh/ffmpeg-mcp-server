@@ -150,7 +150,7 @@ def main():
     # 支持通过环境变量配置传输方式和端口
     transport = os.getenv('MCP_TRANSPORT', 'stdio')
     host = os.getenv('MCP_HOST', '0.0.0.0')
-    port = int(os.getenv('MCP_PORT', '8000'))
+    port = int(os.getenv('MCP_PORT', '8032'))
 
     print(f"Server running on transport: {transport}")
     if transport == 'sse':

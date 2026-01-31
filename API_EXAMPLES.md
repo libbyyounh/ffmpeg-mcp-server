@@ -5,13 +5,13 @@ This document provides examples of how to call the FFmpeg MCP server via HTTP wh
 ## Prerequisites
 
 - Server running in SSE mode (via Docker or with `MCP_TRANSPORT=sse`)
-- Server accessible at `http://localhost:8000` (or your configured host/port)
+- Server accessible at `http://localhost:8032` (or your configured host/port)
 
 ## API Endpoint
 
 The MCP server exposes its tools through the standard MCP protocol over HTTP.
 
-Base URL: `http://localhost:8000`
+Base URL: `http://localhost:8032`
 
 ## Available Tools
 
@@ -21,7 +21,7 @@ Search for a video file by name in a directory.
 
 ```bash
 # Using MCP client
-curl -X POST http://localhost:8000/message \
+curl -X POST http://localhost:8032/message \
   -H "Content-Type: application/json" \
   -d '{
     "method": "tools/call",
@@ -40,7 +40,7 @@ curl -X POST http://localhost:8000/message \
 Get detailed information about a video file.
 
 ```bash
-curl -X POST http://localhost:8000/message \
+curl -X POST http://localhost:8032/message \
   -H "Content-Type: application/json" \
   -d '{
     "method": "tools/call",
@@ -70,7 +70,7 @@ Extract a segment from a video.
 
 ```bash
 # Clip from 00:01:30 to 00:02:30
-curl -X POST http://localhost:8000/message \
+curl -X POST http://localhost:8032/message \
   -H "Content-Type: application/json" \
   -d '{
     "method": "tools/call",
@@ -86,7 +86,7 @@ curl -X POST http://localhost:8000/message \
   }'
 
 # Clip last 10 seconds using duration
-curl -X POST http://localhost:8000/message \
+curl -X POST http://localhost:8032/message \
   -H "Content-Type: application/json" \
   -d '{
     "method": "tools/call",
@@ -108,7 +108,7 @@ Merge multiple video files into one.
 
 ```bash
 # Fast mode (requires same codec/resolution/fps)
-curl -X POST http://localhost:8000/message \
+curl -X POST http://localhost:8032/message \
   -H "Content-Type: application/json" \
   -d '{
     "method": "tools/call",
@@ -127,7 +127,7 @@ curl -X POST http://localhost:8000/message \
   }'
 
 # Safe mode (re-encodes if necessary)
-curl -X POST http://localhost:8000/message \
+curl -X POST http://localhost:8032/message \
   -H "Content-Type: application/json" \
   -d '{
     "method": "tools/call",
@@ -150,7 +150,7 @@ curl -X POST http://localhost:8000/message \
 Overlay one video on top of another.
 
 ```bash
-curl -X POST http://localhost:8000/message \
+curl -X POST http://localhost:8032/message \
   -H "Content-Type: application/json" \
   -d '{
     "method": "tools/call",
@@ -184,7 +184,7 @@ curl -X POST http://localhost:8000/message \
 Resize a video to specific dimensions.
 
 ```bash
-curl -X POST http://localhost:8000/message \
+curl -X POST http://localhost:8032/message \
   -H "Content-Type: application/json" \
   -d '{
     "method": "tools/call",
@@ -200,7 +200,7 @@ curl -X POST http://localhost:8000/message \
   }'
 
 # Keep aspect ratio (use -2 for auto calculation)
-curl -X POST http://localhost:8000/message \
+curl -X POST http://localhost:8032/message \
   -H "Content-Type: application/json" \
   -d '{
     "method": "tools/call",
@@ -222,7 +222,7 @@ Extract images from a video at specified intervals.
 
 ```bash
 # Extract 1 frame per second as PNG
-curl -X POST http://localhost:8000/message \
+curl -X POST http://localhost:8032/message \
   -H "Content-Type: application/json" \
   -d '{
     "method": "tools/call",
@@ -239,7 +239,7 @@ curl -X POST http://localhost:8000/message \
   }'
 
 # Extract first 10 frames as JPG
-curl -X POST http://localhost:8000/message \
+curl -X POST http://localhost:8032/message \
   -H "Content-Type: application/json" \
   -d '{
     "method": "tools/call",
@@ -266,7 +266,7 @@ curl -X POST http://localhost:8000/message \
 Play a video file (note: requires display, mainly for testing).
 
 ```bash
-curl -X POST http://localhost:8000/message \
+curl -X POST http://localhost:8032/message \
   -H "Content-Type: application/json" \
   -d '{
     "method": "tools/call",
@@ -288,7 +288,7 @@ import requests
 import json
 
 class FFmpegMCPClient:
-    def __init__(self, base_url="http://localhost:8000"):
+    def __init__(self, base_url="http://localhost:8032"):
         self.base_url = base_url
         self.endpoint = f"{base_url}/message"
 
@@ -365,7 +365,7 @@ print(result)
 const axios = require('axios');
 
 class FFmpegMCPClient {
-  constructor(baseUrl = 'http://localhost:8000') {
+  constructor(baseUrl = 'http://localhost:8032') {
     this.baseUrl = baseUrl;
     this.endpoint = `${baseUrl}/message`;
   }
@@ -447,7 +447,7 @@ AI models can call these tools by making HTTP requests to the MCP server. The mo
 Example prompt for AI model:
 
 ```
-You have access to an FFmpeg MCP server at http://localhost:8000 with the following tools:
+You have access to an FFmpeg MCP server at http://localhost:8032 with the following tools:
 - find_video_path: Find video files
 - get_video_info: Get video metadata
 - clip_video: Extract video segments

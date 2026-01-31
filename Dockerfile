@@ -28,11 +28,11 @@ RUN uv sync
 # 设置环境变量
 ENV MCP_TRANSPORT=sse
 ENV MCP_HOST=0.0.0.0
-ENV MCP_PORT=8000
+ENV MCP_PORT=8032
 ENV PYTHONUNBUFFERED=1
 
 # 暴露端口
-EXPOSE 8000
+EXPOSE 8032
 
 # 创建视频处理工作目录
 RUN mkdir -p /videos /output
@@ -40,7 +40,7 @@ VOLUME ["/videos", "/output"]
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/ || exit 1
+    CMD curl -f http://localhost:8032/ || exit 1
 
 # 运行服务
 CMD ["uv", "run", "ffmpeg-mcp"]

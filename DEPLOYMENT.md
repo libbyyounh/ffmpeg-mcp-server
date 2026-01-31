@@ -54,7 +54,7 @@ docker-compose logs -f
 
 ## 📡 服务访问
 
-- **服务地址**: `http://localhost:8000`
+- **服务地址**: `http://localhost:8032`
 - **传输协议**: SSE (Server-Sent Events)
 - **MCP 协议**: 标准 MCP over HTTP
 
@@ -67,7 +67,7 @@ docker-compose logs -f
 ```bash
 MCP_TRANSPORT=sse      # 传输方式: stdio 或 sse
 MCP_HOST=0.0.0.0       # 监听地址
-MCP_PORT=8000          # 监听端口
+MCP_PORT=8032          # 监听端口
 ```
 
 ### 目录映射
@@ -100,7 +100,7 @@ import json
 
 def call_ffmpeg_tool(tool_name, arguments):
     response = requests.post(
-        "http://localhost:8000/message",
+        "http://localhost:8032/message",
         headers={"Content-Type": "application/json"},
         json={
             "method": "tools/call",
@@ -132,7 +132,7 @@ print(result)
 
 ```bash
 # 获取视频信息
-curl -X POST http://localhost:8000/message \
+curl -X POST http://localhost:8032/message \
   -H "Content-Type: application/json" \
   -d '{
     "method": "tools/call",
@@ -166,7 +166,7 @@ AI 模型 → HTTP Client → FFmpeg MCP Server → FFmpeg → 视频处理结�
 向 AI 模型提供以下上下文：
 
 ```
-你可以访问一个运行在 http://localhost:8000 的 FFmpeg MCP 服务器。
+你可以访问一个运行在 http://localhost:8032 的 FFmpeg MCP 服务器。
 该服务器提供以下视频处理工具：
 
 1. get_video_info(video_path) - 获取视频元数据
@@ -184,7 +184,7 @@ AI 模型 → HTTP Client → FFmpeg MCP Server → FFmpeg → 视频处理结�
 ### 1. 健康检查
 
 ```bash
-curl http://localhost:8000/
+curl http://localhost:8032/
 ```
 
 ### 2. 运行测试客户端
@@ -200,7 +200,7 @@ python3 test_client.py
 cp ~/test.mp4 ./videos/
 
 # 调用 API 获取信息
-curl -X POST http://localhost:8000/message \
+curl -X POST http://localhost:8032/message \
   -H "Content-Type: application/json" \
   -d '{
     "method": "tools/call",
@@ -220,7 +220,7 @@ curl -X POST http://localhost:8000/message \
 docker-compose logs
 
 # 检查端口占用
-lsof -i :8000
+lsof -i :8032
 
 # 重新构建
 docker-compose down

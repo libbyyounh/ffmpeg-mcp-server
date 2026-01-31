@@ -97,7 +97,7 @@ mkdir -p videos output
 docker-compose up -d
 ```
 
-The server will be available at `http://localhost:8000`
+The server will be available at `http://localhost:8032`
 
 ### Manual Docker Build
 
@@ -108,12 +108,12 @@ docker build -t ffmpeg-mcp:latest .
 # Run the container
 docker run -d \
   --name ffmpeg-mcp-server \
-  -p 8000:8000 \
+  -p 8032:8032 \
   -v $(pwd)/videos:/videos \
   -v $(pwd)/output:/output \
   -e MCP_TRANSPORT=sse \
   -e MCP_HOST=0.0.0.0 \
-  -e MCP_PORT=8000 \
+  -e MCP_PORT=8032 \
   ffmpeg-mcp:latest
 ```
 
@@ -128,7 +128,7 @@ cp .env.example .env
 Available environment variables:
 - `MCP_TRANSPORT`: `stdio` (default) or `sse` (for HTTP server)
 - `MCP_HOST`: Server host (default: `0.0.0.0`)
-- `MCP_PORT`: Server port (default: `8000`)
+- `MCP_PORT`: Server port (default: `8032`)
 
 ### Using the HTTP API
 
@@ -137,7 +137,7 @@ When running in SSE mode (Docker), the MCP server exposes an HTTP endpoint that 
 ### Health Check
 
 ```bash
-curl http://localhost:8000/
+curl http://localhost:8032/
 ```
 
 ### View Logs

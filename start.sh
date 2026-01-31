@@ -43,7 +43,7 @@ sleep 5
 if docker-compose ps | grep -q "Up"; then
     echo "✅ FFmpeg MCP Server is running!"
     echo ""
-    echo "📡 Server URL: http://localhost:8000"
+    echo "📡 Server URL: http://localhost:8032"
     echo "📚 API Documentation: See API_EXAMPLES.md"
     echo ""
     echo "📋 Useful commands:"

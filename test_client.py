@@ -10,7 +10,7 @@ import sys
 
 
 class FFmpegMCPClient:
-    def __init__(self, base_url="http://localhost:8000"):
+    def __init__(self, base_url="http://localhost:8032"):
         self.base_url = base_url
         self.endpoint = f"{base_url}/message"
 
