@@ -136,13 +136,9 @@ def run_ffmpeg(cmd, timeout=300):
     if cmd_dir is None:
         return -1, "Not Support Platform"
     cmd = f"{cmd_dir}/ffmpeg {cmd}"
-    print(f"DEBUG: Running ffmpeg command: {cmd}")
     logs = []
     logs.append(cmd)
     code, log, append_msg = run_command(cmd,timeout)
-    print(f"DEBUG: Command finished with code {code}")
-    print(f"DEBUG: Output log: {log}")
-    print(f"DEBUG: Append msg: {append_msg}")
     logs.append(log)
     logs.append(append_msg)
     return code, '\n'.join(logs)
