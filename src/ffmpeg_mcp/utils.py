@@ -94,8 +94,13 @@ def get_default_output_path(input_path: str, suffix: str = "_output") -> str:
     """
     from urllib.parse import urlparse
     
+    # 计算项目根目录 (假设 utils.py 在 src/ffmpeg_mcp/utils.py，所以向上 3 级是根目录)
+    # /.../ffmpeg-mcp-server/src/ffmpeg_mcp/utils.py -> dirname -> src/ffmpeg_mcp -> dirname -> src -> dirname -> ffmpeg-mcp-server
+    current_file_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(current_file_dir, "../../"))
+    
     # 默认输出目录
-    output_dir = "/output" if os.path.exists("/output") else os.getcwd()
+    output_dir = "/output" if os.path.exists("/output") else os.path.join(project_root, "output")
     
     if is_url(input_path):
         # 从 URL 获取文件名
@@ -120,10 +125,14 @@ def ensure_local_path(path_or_url: str) -> str:
     if not is_url(path_or_url):
         return os.path.abspath(path_or_url)
     
-    # 远程 URL 下载逻辑
-    # 确定下载目录
-    videos_dir = "/videos" if os.path.exists("/videos") else os.path.join(os.getcwd(), "videos")
-    os.makedirs(videos_dir, exist_ok=True)
+    # fix: 始终使用项目根目录下的 videos 文件夹，而不是依赖 cwd
+    current_file_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(current_file_dir, "../../"))
+    videos_dir = "/videos" if os.path.exists("/videos") else os.path.join(project_root, "videos")
+    
+    # 确保目录存在
+    if not os.path.exists("/videos"): # 只有当非根目录映射时才创建
+         os.makedirs(videos_dir, exist_ok=True)
     
     # 根据 URL 生成唯一文件名，避免冲突和重复下载
     url_hash = hashlib.md5(path_or_url.encode('utf-8')).hexdigest()
