@@ -18,7 +18,18 @@ Base URL: `http://localhost:8032`
 The server now supports processing videos directly from remote URLs (HTTP/HTTPS). When using a URL and no `output_path` is specified, the result is automatically saved to the `/output` directory.
 
 
-## Available Tools
+## Static File Serving
+
+When running in **SSE mode**, the server acts as a web server and provides direct URL access to the video folders:
+- `/output/` -> `http://localhost:8032/output/`
+- `/videos/` -> `http://localhost:8032/videos/`
+
+**Example:**
+If you process a video and get the path `/output/my_clip.mp4`, you can access it directly at:
+`http://localhost:8032/output/my_clip.mp4`
+
+> [!TIP]
+> **Real Environment Config**: In a production or remote environment, set the `MCP_EXTERNAL_URL` environment variable (e.g., `http://1.2.3.4:8032`) to ensure returned URLs use the correct public address instead of `localhost`.
 
 ### 1. Find Video Path
 

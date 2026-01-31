@@ -12,7 +12,42 @@ import ffmpeg_mcp.cut_video as cut_video
 # Create an MCP server
 mcp = FastMCP("ffmpeg-mcp")
 
-# Add an addition tool
+def get_base_url():
+    """获取服务器基础 URL，优先使用外部配置的 MCP_EXTERNAL_URL"""
+    external_url = os.getenv('MCP_EXTERNAL_URL')
+    if external_url:
+        return external_url.rstrip('/')
+        
+    host = os.getenv('MCP_HOST', 'localhost')
+    if host == '0.0.0.0':
+        host = 'localhost' # 默认本地访问使用 localhost
+    port = os.getenv('MCP_PORT', '8032')
+    return f"http://{host}:{port}"
+
+def get_file_url(file_path):
+    """根据文件物理路径生成可访问的静态 URL"""
+    if not file_path:
+        return ""
+    abs_path = os.path.abspath(file_path)
+    base_url = get_base_url()
+    
+    if abs_path.startswith("/output"):
+        rel_path = os.path.relpath(abs_path, "/output")
+        return f"{base_url}/output/{rel_path}"
+    elif abs_path.startswith("/videos"):
+        rel_path = os.path.relpath(abs_path, "/videos")
+        return f"{base_url}/videos/{rel_path}"
+    
+    # 回退逻辑：如果映射在当前目录
+    cwd = os.getcwd()
+    if abs_path.startswith(os.path.join(cwd, "output")):
+        rel_path = os.path.relpath(abs_path, os.path.join(cwd, "output"))
+        return f"{base_url}/output/{rel_path}"
+    elif abs_path.startswith(os.path.join(cwd, "videos")):
+        rel_path = os.path.relpath(abs_path, os.path.join(cwd, "videos"))
+        return f"{base_url}/videos/{rel_path}"
+        
+    return ""
 @mcp.tool()
 def find_video_path(root_path, video_name):
     """
@@ -56,7 +91,11 @@ def clip_video(video_path, start=None, end=None,duration = None, output_path=Non
     示例：
     clip_video("input.mp4", "00:01:30", "02:30")
     """
-    return cut_video.clip_video_ffmpeg(video_path,start=start,end=end,duration=duration, output_path=output_path,time_out=time_out)   
+    result = cut_video.clip_video_ffmpeg(video_path,start=start,end=end,duration=duration, output_path=output_path,time_out=time_out)
+    if isinstance(result, (set, list, tuple)) and len(result) >= 3:
+        status, log, path = list(result)
+        return {"status": status, "log": log, "path": path, "url": get_file_url(path)}
+    return result
 
 @mcp.tool()
 def concat_videos(input_files: List[str], output_path: str = None, 
@@ -77,7 +116,14 @@ def concat_videos(input_files: List[str], output_path: str = None,
     2. 推荐视频文件使用相同编码参数，避免拼接失败
     3. 输出文件格式由output_path后缀决定（如.mp4/.mkv）
     """
-    return cut_video.concat_videos(input_files,output_path,fast)
+    result = cut_video.concat_videos(input_files,output_path,fast)
+    # concat_videos 在 cut_video.py 中返回 code, log 或 ffmpeg.run_ffmpeg(cmd) 的结果
+    if isinstance(result, (tuple, list)) and len(result) >= 2:
+        code, log = result[:2]
+        # 需要尝试推断 output_path，因为 concat_videos 内部可能生成了它
+        # 这里简化处理：如果是元组且成功，我们让用户自己 list_output
+        return {"status": code, "log": log, "url": "Use list_output_videos to find the exact path if not specified"}
+    return result
 
 @mcp.tool()
 def get_video_info(video_path: str):
@@ -117,7 +163,11 @@ def overlay_video(background_video, overlay_video, output_path: str = None, posi
     dx(int) - 整形,前景视频坐标x偏移值
     dy(int) - 整形,前景视频坐标y偏移值
     """
-    return cut_video.overlay_video(background_video, overlay_video, output_path,position, dx, dy)
+    result = cut_video.overlay_video(background_video, overlay_video, output_path,position, dx, dy)
+    if isinstance(result, (set, list, tuple)) and len(result) >= 3:
+        status, log, path = list(result)
+        return {"status": status, "log": log, "path": path, "url": get_file_url(path)}
+    return result
        
 @mcp.tool()   
 def scale_video(video_path, width, height,output_path: str = None):
@@ -129,7 +179,8 @@ def scale_video(video_path, width, height,output_path: str = None):
     height(int) - 目标高度。
     output_path(str) - 输出路径
     """ 
-    return cut_video.scale_video(video_path, width, height, output_path)
+    status, log, path = cut_video.scale_video(video_path, width, height, output_path)
+    return {"status": status, "log": log, "path": path, "url": get_file_url(path)}
 
 @mcp.tool()   
 def extract_frames_from_video(video_path,fps=0, output_folder=None, format=0, total_frames=0):
@@ -259,6 +310,24 @@ def delete_videos(video_paths: List[str]):
 
 def main():
     import os
+    from starlette.staticfiles import StaticFiles
+    
+    # 尝试把 /output 和 /videos 挂载为静态目录
+    try:
+        if os.path.exists("/output"):
+            mcp.sse_app.mount("/output", StaticFiles(directory="/output"), name="output")
+        elif os.path.exists(os.path.join(os.getcwd(), "output")):
+            mcp.sse_app.mount("/output", StaticFiles(directory=os.path.join(os.getcwd(), "output")), name="output")
+            
+        if os.path.exists("/videos"):
+            mcp.sse_app.mount("/videos", StaticFiles(directory="/videos"), name="videos")
+        elif os.path.exists(os.path.join(os.getcwd(), "videos")):
+            mcp.sse_app.mount("/videos", StaticFiles(directory=os.path.join(os.getcwd(), "videos")), name="videos")
+            
+        print("Static files mounted: /output and /videos")
+    except Exception as e:
+        print(f"Failed to mount static files: {e}")
+
     # 支持通过环境变量配置传输方式和端口
     transport = os.getenv('MCP_TRANSPORT', 'stdio')
     host = os.getenv('MCP_HOST', '0.0.0.0')
