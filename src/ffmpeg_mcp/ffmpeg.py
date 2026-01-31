@@ -169,7 +169,7 @@ def run_ffplay(cmd, timeout = 60):
     return code, cmd, log
     
 def media_format_ctx(path):
-    cmd = f" -show_streams -of json -v error -i {path}"
+    cmd = f" -show_streams -of json -v error -i \"{path}\""
     code, cmd, log = run_ffprobe(cmd)
     if (code == 0):
         return typedef.FormatContext(log)

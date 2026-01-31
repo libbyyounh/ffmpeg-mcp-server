@@ -178,6 +178,23 @@ curl -X POST http://localhost:8032/message \
       }
     }
   }'
+
+# Concatenate remote URLs
+curl -X POST http://localhost:8032/message \
+  -H "Content-Type: application/json" \
+  -d '{
+    "method": "tools/call",
+    "params": {
+      "name": "concat_videos",
+      "arguments": {
+        "input_files": [
+          "https://www.w3schools.com/html/mov_bbb.mp4",
+          "https://www.w3schools.com/html/movie.mp4"
+        ],
+        "fast": false
+      }
+    }
+  }'
 ```
 
 ### 5. Overlay Video (Picture-in-Picture)

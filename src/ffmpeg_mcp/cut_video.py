@@ -76,11 +76,8 @@ def concat_videos(input_files: List[str], output_path: str = None,
             temp_list_file = utils.create_temp_file()
             with open(temp_list_file, "w", encoding="utf-8") as f:
                 for file in input_files:
-                    abs_path = os.path.abspath(file)
-                    if os.name == 'nt':
-                        f.write(f"file '{abs_path}'\n")
-                    else:
-                        f.write(f"file '{abs_path}'\n")
+                    path_to_write = file if utils.is_url(file) else os.path.abspath(file)
+                    f.write(f"file '{path_to_write}'\n")
             
             # 构建FFmpeg命令
             cmd = f"-f concat -safe 0 -i \"{temp_list_file}\" -c copy -y \"{output_path}\""
@@ -102,7 +99,6 @@ def concat_videos(input_files: List[str], output_path: str = None,
             height = fmt_ctx.video_streams[0].height
             aspect = float(width)/float(height)
             for i, file in enumerate(input_files):
-                inputs.extend(["-i", file])
                 if i == 0:
                     filter_str += f"[{i}:v]setsar=1[{i}v];"
                 if i > 0:
@@ -137,7 +133,6 @@ def concat_videos(input_files: List[str], output_path: str = None,
             filter_str += f"concat=n={len(input_files)}:v=1:a={a}{out}"
         elif len(fmt_ctx.audio_streams) > 0: # 音频
             for i, file in enumerate(input_files):
-                inputs.extend(["-i", file])
                 filter_str += f"[{i}:a]"
             filter_str += f"concat=n={len(input_files)}:a=1:v=0[outa]"
             map = " -map '[outa]' "
