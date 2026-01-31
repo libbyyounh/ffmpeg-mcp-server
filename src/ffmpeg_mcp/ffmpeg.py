@@ -45,6 +45,7 @@ def run_command(command, timeout=300):
         args = shlex.split(command, posix=(sys.platform != 'win32'))
         proc = subprocess.Popen(
             args,
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             universal_newlines=True,
@@ -78,7 +79,12 @@ def is_file_and_exists(file_path):
 def command_dir():
     system,machine = check_os_architecture()
     current_work_dir = os.path.dirname(__file__)
-    os.chdir(f"{current_work_dir}/bin")
+    # os.chdir(f"{current_work_dir}/bin") # Removed to prevent side effects
+
+    import shutil
+    ffmpeg_path = shutil.which('ffmpeg')
+    if ffmpeg_path:
+        return os.path.dirname(ffmpeg_path)
 
     if system == "Darwin":
         if machine == "x86_64":
@@ -91,40 +97,37 @@ def command_dir():
             return None
 
         if not is_file_and_exists(f"{dir}/ffmpeg"):
-            cmd = f"rm -rf {dir}"
-            code,_,_ = run_command(cmd)
-            cmd = f"git clone {url}"
-            code,_,_ = run_command(cmd)
-            if code == 0:
-                os.chdir(dir)
-            else:
+            # 如果本地没有且不能使用系统ffmpeg，尝试下载（但这里尽量避免）
+            try:
+                cmd = f"rm -rf {dir}"
+                code,_,_ = run_command(cmd)
+                cmd = f"git clone {url}"
+                code,_,_ = run_command(cmd)
+                if code == 0:
+                    os.chdir(dir)
+                else:
+                    return None
+                cmd = f"git checkout v0.1"
+                code,_,_= run_command(cmd)
+                if code == 0:
+                    utils.unzip_to_current_directory(f"ffmpeg.zip")
+                else:
+                    return None
+                cmd = f"chmod 777 {dir}/ffmpeg"
+                code,_,_= run_command(cmd)
+                cmd = f"chmod 777 {dir}/ffprobe"
+                code,_,_= run_command(cmd)
+                cmd = f"chmod 777 {dir}/ffplay"
+                code,_,_= run_command(cmd)
+            except Exception as e:
+                print(f"Failed to auto-install ffmpeg: {e}")
                 return None
-            cmd = f"git checkout v0.1"
-            code,_,_= run_command(cmd)
-            if code == 0:
-                utils.unzip_to_current_directory(f"ffmpeg.zip")
-            else:
-                return None
-            cmd = f"chmod 777 {dir}/ffmpeg"
-            code,_,_= run_command(cmd)
-            cmd = f"chmod 777 {dir}/ffprobe"
-            code,_,_= run_command(cmd)
-            cmd = f"chmod 777 {dir}/ffplay"
-            code,_,_= run_command(cmd)
         return dir
 
     elif system == "Linux":
-        # Linux 系统直接使用系统安装的 ffmpeg
-        # 在 Docker 中会通过 apt-get 安装
-        # 检查 ffmpeg 是否在 PATH 中可用
-        import shutil
-        ffmpeg_path = shutil.which('ffmpeg')
-        if ffmpeg_path:
-            # 返回 ffmpeg 所在目录
-            return os.path.dirname(ffmpeg_path)
-        else:
-            print("FFmpeg not found in system PATH. Please install ffmpeg.")
-            return None
+        # Check logic already covered by top check
+        print("FFmpeg not found in system PATH. Please install ffmpeg.")
+        return None
 
     return None
 
@@ -133,9 +136,13 @@ def run_ffmpeg(cmd, timeout=300):
     if cmd_dir is None:
         return -1, "Not Support Platform"
     cmd = f"{cmd_dir}/ffmpeg {cmd}"
+    print(f"DEBUG: Running ffmpeg command: {cmd}")
     logs = []
     logs.append(cmd)
     code, log, append_msg = run_command(cmd,timeout)
+    print(f"DEBUG: Command finished with code {code}")
+    print(f"DEBUG: Output log: {log}")
+    print(f"DEBUG: Append msg: {append_msg}")
     logs.append(log)
     logs.append(append_msg)
     return code, '\n'.join(logs)

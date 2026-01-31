@@ -4,7 +4,7 @@ import time
 import os
 
 def parse_mcp_result(msg):
-    """助手函数：从 MCP 响应中提取并解析 tool 返回的 JSON 数据"""
+    """Refined helper to extract result from MCP tool response"""
     try:
         content = msg.get('result', {}).get('content', [])
         if content and content[0].get('type') == 'text':
@@ -18,7 +18,7 @@ def parse_mcp_result(msg):
     return {}
 
 def test_mcp():
-    print("Testing FFmpeg MCP Server over SSE...")
+    print("Testing FFmpeg MCP Server over SSE: Concat Videos...")
     
     host = os.getenv('MCP_HOST', 'localhost')
     port = os.getenv('MCP_PORT', '8032')
@@ -47,73 +47,40 @@ def test_mcp():
 
         print(f"✅ Using endpoint: {endpoint}")
 
-        # --- MCP INITIALIZATION SEQUENCE ---
-        print("\n1. Sending 'initialize' request...")
+        # --- MCP INITIALIZATION ---
+        print("\n1. Handshaking (initialize)...")
         init_payload = {
             "jsonrpc": "2.0",
             "id": "init-1",
             "method": "initialize",
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": {"name": "test-client", "version": "1.0.0"}
-            }
+            "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0"}}
         }
         requests.post(f"{base_url}{endpoint}", json=init_payload, headers=headers)
         
+        # Wait for initialize response
         for line in stream_iterator:
             if not line: continue
-            decoded_line = line.decode('utf-8')
-            if decoded_line.startswith('data: '):
-                data = decoded_line.replace('data: ', '')
-                msg = json.loads(data)
+            if line.decode('utf-8').startswith('data: '):
+                msg = json.loads(line.decode('utf-8').replace('data: ', ''))
                 if msg.get('id') == 'init-1':
-                    print("✅ Received initialization result")
                     break
-
-        print("\n2. Sending 'notifications/initialized'...")
-        notif_payload = {"jsonrpc": "2.0", "method": "notifications/initialized"}
-        requests.post(f"{base_url}{endpoint}", json=notif_payload, headers=headers)
-
-        # 3. Call SYNC tool: get_video_info
-        print(f"\n3. Calling SYNC tool (get_video_info)...")
-        info_payload = {
-            "jsonrpc": "2.0",
-            "id": "test-sync-info",
-            "method": "tools/call",
-            "params": {
-                "name": "get_video_info",
-                "arguments": {
-                    "video_path": "https://www.w3schools.com/html/mov_bbb.mp4"
-                }
-            }
-        }
-        requests.post(f"{base_url}{endpoint}", json=info_payload, headers=headers)
         
-        for line in stream_iterator:
-            if not line: continue
-            decoded_line = line.decode('utf-8')
-            if decoded_line.startswith('data: '):
-                data = decoded_line.replace('data: ', '')
-                msg = json.loads(data)
-                if msg.get('id') == 'test-sync-info':
-                    print("✅ Received SYNC tool response (immediate)")
-                    info = parse_mcp_result(msg)
-                    print(json.dumps(info, indent=2, ensure_ascii=False))
-                    break
+        requests.post(f"{base_url}{endpoint}", json={"jsonrpc": "2.0", "method": "notifications/initialized"}, headers=headers)
+        print("✅ Handshake complete")
 
-        # 4. Call ASYNC tool: clip_video
-        print(f"\n4. Submitting ASYNC task (clip_video)...")
+        # --- TEST CONCAT VIDEOS ---
+        print("\n2. Submitting concat_videos task (2 remote videos)...")
+        # We'll use the same video twice for demonstration
+        video_url = "https://www.w3schools.com/html/mov_bbb.mp4"
         task_payload = {
             "jsonrpc": "2.0",
-            "id": "test-async-clip",
+            "id": "test-concat",
             "method": "tools/call",
             "params": {
-                "name": "clip_video",
+                "name": "concat_videos",
                 "arguments": {
-                    "video_path": "https://www.w3schools.com/html/mov_bbb.mp4",
-                    "start": 0,
-                    "duration": 2
+                    "input_files": [video_url, video_url],
+                    "output_path": "concat_result.mp4"
                 }
             }
         }
@@ -122,57 +89,61 @@ def test_mcp():
         task_id = None
         for line in stream_iterator:
             if not line: continue
-            decoded_line = line.decode('utf-8')
-            if decoded_line.startswith('data: '):
-                data = decoded_line.replace('data: ', '')
+            data = line.decode('utf-8').replace('data: ', '')
+            if not data: continue
+            
+            # DEBUG
+            print(f"DEBUG raw SSE data: {data}")
+
+            try:
                 msg = json.loads(data)
-                if msg.get('id') == 'test-async-clip':
-                    print("✅ Received ASYNC task initiation response")
-                    result_data = parse_mcp_result(msg)
-                    task_id = result_data.get('task_id')
-                    print(f"Task ID: {task_id}")
-                    break
+            except Exception as e:
+                print(f"DEBUG: JSON parse error for data: {data} -> {e}")
+                continue
+            
+            if msg.get('id') == 'test-concat':
+                print("✅ Received task submission response")
+                res = parse_mcp_result(msg)
+                task_id = res.get('task_id')
+                print(f"Task ID: {task_id}")
+                break
 
         if not task_id:
-            print("❌ Did not receive task_id")
+            print("❌ Failed to get task_id")
             return
 
-        # 5. Poll for task completion
-        print(f"\n5. Polling for task {task_id} completion...")
-        for i in range(20):
-            status_payload = {
+        # Poll status
+        print(f"\n3. Polling task {task_id}...")
+        for i in range(30): # Wait up to 60s
+            status_req = {
                 "jsonrpc": "2.0",
                 "id": f"poll-{i}",
                 "method": "tools/call",
-                "params": {
-                    "name": "get_task_status",
-                    "arguments": {"task_id": task_id}
-                }
+                "params": {"name": "get_task_status", "arguments": {"task_id": task_id}}
             }
-            requests.post(f"{base_url}{endpoint}", json=status_payload, headers=headers)
+            requests.post(f"{base_url}{endpoint}", json=status_req, headers=headers)
             
-            status_found = False
+            found = False
             for line in stream_iterator:
                 if not line: continue
-                decoded_line = line.decode('utf-8')
-                if decoded_line.startswith('data: '):
-                    data = decoded_line.replace('data: ', '')
-                    msg = json.loads(data)
-                    if msg.get('id') == f"poll-{i}":
-                        task_data = parse_mcp_result(msg)
-                        status = task_data.get('status')
-                        print(f"Attempt {i+1}: Status is {status}")
-                        if status in ["COMPLETED", "FAILED"]:
-                            print("\n🎉 Task Finished!")
-                            print(json.dumps(task_data, indent=2, ensure_ascii=False))
-                            status_found = True
-                            break
-                        else:
-                            status_found = True
-                            break
+                val = line.decode('utf-8').replace('data: ', '')
+                if not val: continue
+                try:
+                    m = json.loads(val)
+                except:
+                    continue
+                
+                if m.get('id') == f"poll-{i}":
+                    info = parse_mcp_result(m)
+                    status = info.get('status')
+                    print(f"Poll {i+1}: {status}")
+                    if status in ['COMPLETED', 'FAILED']:
+                        print("\n🎉 Final Result:")
+                        print(json.dumps(info, indent=2, ensure_ascii=False))
+                        found = True
+                    break
             
-            if status_found and status in ["COMPLETED", "FAILED"]:
-                break
+            if found: break
             time.sleep(2)
 
     except Exception as e:

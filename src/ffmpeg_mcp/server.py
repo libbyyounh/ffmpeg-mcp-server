@@ -125,8 +125,6 @@ def clip_video(video_path, start=None, end=None,duration = None, output_path=Non
     示例：
     clip_video("input.mp4", "00:01:30", "02:30")
     """
-    video_path = utils.ensure_local_path(video_path)
-    
     task_id = task_manager.create_task("clip_video", {
         "video_path": video_path, "start": start, "end": end, "duration": duration, "output_path": output_path
     })
@@ -134,7 +132,8 @@ def clip_video(video_path, start=None, end=None,duration = None, output_path=Non
     def run_task():
         task_manager.update_task(task_id, "RUNNING")
         try:
-            result = cut_video.clip_video_ffmpeg(video_path, start=start, end=end, duration=duration, output_path=output_path, time_out=time_out)
+            local_video_path = utils.ensure_local_path(video_path)
+            result = cut_video.clip_video_ffmpeg(local_video_path, start=start, end=end, duration=duration, output_path=output_path, time_out=time_out)
             if isinstance(result, (set, list, tuple)) and len(result) >= 3:
                 status, log, path = list(result)
                 task_manager.update_task(task_id, "COMPLETED", result={"status": status, "log": log, "path": path, "url": get_file_url(path)})
@@ -165,8 +164,6 @@ def concat_videos(input_files: List[str], output_path: str = None,
     2. 推荐视频文件使用相同编码参数，避免拼接失败
     3. 输出文件格式由output_path后缀决定（如.mp4/.mkv）
     """
-    input_files = [utils.ensure_local_path(f) for f in input_files]
-    
     task_id = task_manager.create_task("concat_videos", {
         "input_files": input_files, "output_path": output_path, "fast": fast
     })
@@ -174,7 +171,8 @@ def concat_videos(input_files: List[str], output_path: str = None,
     def run_task():
         task_manager.update_task(task_id, "RUNNING")
         try:
-            result = cut_video.concat_videos(input_files, output_path, fast)
+            local_input_files = [utils.ensure_local_path(f) for f in input_files]
+            result = cut_video.concat_videos(local_input_files, output_path, fast)
             if isinstance(result, (tuple, list)) and len(result) >= 2:
                 code, log = result[:2]
                 task_manager.update_task(task_id, "COMPLETED", result={"status": code, "log": log, "url": "Use list_output_videos to find the exact path if not specified"})
@@ -226,9 +224,6 @@ def overlay_video(background_video, overlay_video, output_path: str = None, posi
     dx(int) - 整形,前景视频坐标x偏移值
     dy(int) - 整形,前景视频坐标y偏移值
     """
-    background_video = utils.ensure_local_path(background_video)
-    overlay_video = utils.ensure_local_path(overlay_video)
-    
     task_id = task_manager.create_task("overlay_video", {
         "background_video": background_video, "overlay_video": overlay_video, "output_path": output_path, "position": position
     })
@@ -236,7 +231,9 @@ def overlay_video(background_video, overlay_video, output_path: str = None, posi
     def run_task():
         task_manager.update_task(task_id, "RUNNING")
         try:
-            result = cut_video.overlay_video(background_video, overlay_video, output_path, position, dx, dy)
+            local_background = utils.ensure_local_path(background_video)
+            local_overlay = utils.ensure_local_path(overlay_video)
+            result = cut_video.overlay_video(local_background, local_overlay, output_path, position, dx, dy)
             if isinstance(result, (set, list, tuple)) and len(result) >= 3:
                 status, log, path = list(result)
                 task_manager.update_task(task_id, "COMPLETED", result={"status": status, "log": log, "path": path, "url": get_file_url(path)})
@@ -258,8 +255,6 @@ def scale_video(video_path, width, height,output_path: str = None):
     height(int) - 目标高度。
     output_path(str) - 输出路径
     """ 
-    video_path = utils.ensure_local_path(video_path)
-    
     task_id = task_manager.create_task("scale_video", {
         "video_path": video_path, "width": width, "height": height, "output_path": output_path
     })
@@ -267,7 +262,8 @@ def scale_video(video_path, width, height,output_path: str = None):
     def run_task():
         task_manager.update_task(task_id, "RUNNING")
         try:
-            status, log, path = cut_video.scale_video(video_path, width, height, output_path)
+            local_video_path = utils.ensure_local_path(video_path)
+            status, log, path = cut_video.scale_video(local_video_path, width, height, output_path)
             task_manager.update_task(task_id, "COMPLETED", result={"status": status, "log": log, "path": path, "url": get_file_url(path)})
         except Exception as e:
             task_manager.update_task(task_id, "FAILED", error=str(e))
@@ -287,8 +283,6 @@ def extract_frames_from_video(video_path,fps=0, output_folder=None, format=0, to
     format(int) - 抽取的图片格式，0：代表png 1:jpg 2:webp
     total_frames(int) - 最多抽取多少张，0代表不限制
     """ 
-    video_path = utils.ensure_local_path(video_path)
-    
     task_id = task_manager.create_task("extract_frames", {
         "video_path": video_path, "fps": fps, "format": format, "total_frames": total_frames
     })
@@ -296,7 +290,8 @@ def extract_frames_from_video(video_path,fps=0, output_folder=None, format=0, to
     def run_task():
         task_manager.update_task(task_id, "RUNNING")
         try:
-            result = cut_video.extract_frames_from_video(video_path, fps, output_folder, format, total_frames)
+            local_video_path = utils.ensure_local_path(video_path)
+            result = cut_video.extract_frames_from_video(local_video_path, fps, output_folder, format, total_frames)
             task_manager.update_task(task_id, "COMPLETED", result=result)
         except Exception as e:
             task_manager.update_task(task_id, "FAILED", error=str(e))
