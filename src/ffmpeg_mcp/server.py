@@ -193,6 +193,70 @@ def download_video(video_path: str):
     except Exception as e:
         return {"error": f"读取文件失败: {str(e)}"}
 
+@mcp.tool()
+def list_output_videos():
+    """
+    列出 /output 目录下的所有视频文件。
+    
+    返回：
+    List[str] - 视频文件的绝对路径列表
+    """
+    VIDEO_EXTS = {'.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.webm', '.ts'}
+    output_dir = "/output"
+    if not os.path.exists(output_dir):
+        output_dir = os.path.join(os.getcwd(), "output")
+        if not os.path.exists(output_dir):
+            return []
+            
+    video_files = []
+    for root, dirs, files in os.walk(output_dir):
+        for file in files:
+            if os.path.splitext(file)[1].lower() in VIDEO_EXTS:
+                video_files.append(os.path.abspath(os.path.join(root, file)))
+    return video_files
+
+@mcp.tool()
+def delete_videos(video_paths: List[str]):
+    """
+    根据绝对路径批量删除视频文件。
+    仅限删除 /videos 或 /output 目录下的文件。
+    
+    参数：
+    video_paths : List[str] - 要删除的文件路径列表
+    
+    返回：
+    dict - 包含成功和失败信息的汇总
+    """
+    results = {"success": [], "failed": []}
+    allowed_dirs = ["/videos", "/output", os.getcwd()]
+    abs_allowed_dirs = [os.path.abspath(d) for d in allowed_dirs]
+
+    for path in video_paths:
+        try:
+            abs_path = os.path.abspath(path)
+            
+            # 安全检查
+            is_allowed = False
+            for allowed in abs_allowed_dirs:
+                if abs_path.startswith(allowed):
+                    is_allowed = True
+                    break
+            
+            if not is_allowed:
+                results["failed"].append({"path": path, "reason": "权限拒绝：仅限删除 /videos 或 /output 目录下的文件"})
+                continue
+                
+            if not os.path.exists(abs_path):
+                results["failed"].append({"path": path, "reason": "文件不存在"})
+                continue
+                
+            os.remove(abs_path)
+            results["success"].append(path)
+        except Exception as e:
+            results["failed"].append({"path": path, "reason": str(e)})
+            
+    return results
+
 def main():
     import os
     # 支持通过环境变量配置传输方式和端口

@@ -365,12 +365,47 @@ with open("downloaded_video.mp4", "wb") as f:
 
 **Node.js:**
 ```javascript
-const fs = require('fs');
-
-// Assume 'result' is the JSON response from the server
+const Buffer = require('buffer').Buffer;
 const base64Data = result.result.base64_data;
 const buffer = Buffer.from(base64Data, 'base64');
 fs.writeFileSync('downloaded_video.mp4', buffer);
+```
+
+### 10. List Output Videos
+
+List all video files in the `/output` directory.
+
+```bash
+curl -X POST http://localhost:8032/message \
+  -H "Content-Type: application/json" \
+  -d '{
+    "method": "tools/call",
+    "params": {
+      "name": "list_output_videos",
+      "arguments": {}
+    }
+  }'
+```
+
+### 11. Delete Videos (Batch)
+
+Batch delete video files from allowed directories (`/videos` or `/output`).
+
+```bash
+curl -X POST http://localhost:8032/message \
+  -H "Content-Type: application/json" \
+  -d '{
+    "method": "tools/call",
+    "params": {
+      "name": "delete_videos",
+      "arguments": {
+        "video_paths": [
+          "/output/clip_1.mp4",
+          "/output/test_video.mp4"
+        ]
+      }
+    }
+  }'
 ```
 
 ## Python Client Example
@@ -548,6 +583,9 @@ You have access to an FFmpeg MCP server at http://localhost:8032 with the follow
 - scale_video: Resize videos
 - extract_frames_from_video: Export frames as images
 - play_video: Play videos
+- download_video: Retrieve video content as Base64
+- list_output_videos: List files in the output directory
+- delete_videos: Batch delete video files
 
 Videos are located in /videos/ and outputs should go to /output/
 ```
