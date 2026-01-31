@@ -7,15 +7,9 @@ set -e
 echo "🎬 FFmpeg MCP Server - Quick Start"
 echo "=================================="
 
-# 检查 Docker 是否安装
-if ! command -v docker &> /dev/null; then
-    echo "❌ Docker is not installed. Please install Docker first."
-    echo "   Visit: https://docs.docker.com/get-docker/"
-    exit 1
-fi
 
 # 检查 Docker Compose 是否安装
-if ! command -v docker-compose &> /dev/null; then
+if ! command -v docker compose &> /dev/null; then
     echo "❌ Docker Compose is not installed. Please install Docker Compose first."
     echo "   Visit: https://docs.docker.com/compose/install/"
     exit 1
@@ -33,7 +27,7 @@ fi
 
 # 构建并启动服务
 echo "🚀 Building and starting FFmpeg MCP Server..."
-docker-compose up -d --build
+docker compose up -d --build
 
 # 等待服务启动
 echo "⏳ Waiting for server to start..."
