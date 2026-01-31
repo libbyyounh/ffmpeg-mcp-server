@@ -1,0 +1,46 @@
+# 使用 Python 3.11 官方镜像作为基础镜像
+FROM python:3.11-slim
+
+# 设置工作目录
+WORKDIR /app
+
+# 安装系统依赖和 FFmpeg
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 验证 FFmpeg 安装
+RUN ffmpeg -version && ffprobe -version && ffplay -version || true
+
+# 复制项目文件
+COPY pyproject.toml ./
+COPY README.md ./
+COPY src/ ./src/
+
+# 安装 uv (快速的 Python 包管理器)
+RUN pip install --no-cache-dir uv
+
+# 使用 uv 安装项目依赖
+RUN uv sync
+
+# 设置环境变量
+ENV MCP_TRANSPORT=sse
+ENV MCP_HOST=0.0.0.0
+ENV MCP_PORT=8000
+ENV PYTHONUNBUFFERED=1
+
+# 暴露端口
+EXPOSE 8000
+
+# 创建视频处理工作目录
+RUN mkdir -p /videos /output
+VOLUME ["/videos", "/output"]
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/ || exit 1
+
+# 运行服务
+CMD ["uv", "run", "ffmpeg-mcp"]

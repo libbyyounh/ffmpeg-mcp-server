@@ -79,13 +79,17 @@ def command_dir():
     system,machine = check_os_architecture()
     current_work_dir = os.path.dirname(__file__)
     os.chdir(f"{current_work_dir}/bin")
+
     if system == "Darwin":
         if machine == "x86_64":
             dir = f"{current_work_dir}/bin/ffmpeg-macos-x86_64"
             url = "https://gitee.com/littlecodergitxxx/ffmpeg-macos-x86_64.git"
-        if machine == "arm64":
+        elif machine == "arm64":
             dir = f"{current_work_dir}/bin/ffmpeg-macos-arm64"
             url = "https://gitee.com/littlecodergitxxx/ffmpeg-macos-arm64.git"
+        else:
+            return None
+
         if not is_file_and_exists(f"{dir}/ffmpeg"):
             cmd = f"rm -rf {dir}"
             code,_,_ = run_command(cmd)
@@ -108,6 +112,20 @@ def command_dir():
             cmd = f"chmod 777 {dir}/ffplay"
             code,_,_= run_command(cmd)
         return dir
+
+    elif system == "Linux":
+        # Linux 系统直接使用系统安装的 ffmpeg
+        # 在 Docker 中会通过 apt-get 安装
+        # 检查 ffmpeg 是否在 PATH 中可用
+        import shutil
+        ffmpeg_path = shutil.which('ffmpeg')
+        if ffmpeg_path:
+            # 返回 ffmpeg 所在目录
+            return os.path.dirname(ffmpeg_path)
+        else:
+            print("FFmpeg not found in system PATH. Please install ffmpeg.")
+            return None
+
     return None
 
 def run_ffmpeg(cmd, timeout=300):

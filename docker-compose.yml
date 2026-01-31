@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  ffmpeg-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ffmpeg-mcp:latest
+    container_name: ffmpeg-mcp-server
+    ports:
+      - "${MCP_PORT:-8000}:8000"
+    environment:
+      - MCP_TRANSPORT=sse
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8000
+    volumes:
+      # 挂载视频输入目录
+      - ./videos:/videos
+      # 挂载视频输出目录
+      - ./output:/output
+      # 可选: 挂载自定义配置
+      # - ./.env:/app/.env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    # 资源限制 (可选)
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 512M

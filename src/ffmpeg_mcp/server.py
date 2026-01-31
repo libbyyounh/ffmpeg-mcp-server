@@ -146,7 +146,19 @@ def extract_frames_from_video(video_path,fps=0, output_folder=None, format=0, to
     return cut_video.extract_frames_from_video(video_path, fps, output_folder, format, total_frames)
 
 def main():
-    print("Server running")
-    mcp.run(transport='stdio')
+    import os
+    # 支持通过环境变量配置传输方式和端口
+    transport = os.getenv('MCP_TRANSPORT', 'stdio')
+    host = os.getenv('MCP_HOST', '0.0.0.0')
+    port = int(os.getenv('MCP_PORT', '8000'))
+
+    print(f"Server running on transport: {transport}")
+    if transport == 'sse':
+        print(f"SSE server listening on http://{host}:{port}")
+        mcp.run(transport='sse', sse_host=host, sse_port=port)
+    else:
+        print("STDIO mode")
+        mcp.run(transport='stdio')
+
 if __name__ == "__main__":
     main()

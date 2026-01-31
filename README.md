@@ -73,4 +73,81 @@ uv sync
 Note: the value:`/Users/XXX/Downloads/ffmpeg` in args  need to replace the actual download ffmpeg-mcp directory
 
 ## Supported platforms
-Currently, only macos platforms are supported, including ARM64 or x86_64
+- macOS (ARM64 / x86_64)
+- Linux (via Docker)
+- Windows (via Docker)
+
+## Docker Deployment (Recommended for HTTP/API Access)
+
+### Quick Start with Docker Compose
+
+1. Clone the repository
+```bash
+git clone https://github.com/video-creator/ffmpeg-mcp.git
+cd ffmpeg-mcp
+```
+
+2. Create directories for videos
+```bash
+mkdir -p videos output
+```
+
+3. Start the server
+```bash
+docker-compose up -d
+```
+
+The server will be available at `http://localhost:8000`
+
+### Manual Docker Build
+
+```bash
+# Build the image
+docker build -t ffmpeg-mcp:latest .
+
+# Run the container
+docker run -d \
+  --name ffmpeg-mcp-server \
+  -p 8000:8000 \
+  -v $(pwd)/videos:/videos \
+  -v $(pwd)/output:/output \
+  -e MCP_TRANSPORT=sse \
+  -e MCP_HOST=0.0.0.0 \
+  -e MCP_PORT=8000 \
+  ffmpeg-mcp:latest
+```
+
+### Configuration
+
+Copy `.env.example` to `.env` and modify settings:
+
+```bash
+cp .env.example .env
+```
+
+Available environment variables:
+- `MCP_TRANSPORT`: `stdio` (default) or `sse` (for HTTP server)
+- `MCP_HOST`: Server host (default: `0.0.0.0`)
+- `MCP_PORT`: Server port (default: `8000`)
+
+### Using the HTTP API
+
+When running in SSE mode (Docker), the MCP server exposes an HTTP endpoint that can be called by AI models and other clients. See `API_EXAMPLES.md` for detailed usage examples.
+
+### Health Check
+
+```bash
+curl http://localhost:8000/
+```
+
+### View Logs
+
+```bash
+docker-compose logs -f
+```
+
+### Stop the Server
+
+```bash
+docker-compose down
+```
