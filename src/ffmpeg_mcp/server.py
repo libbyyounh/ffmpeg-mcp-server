@@ -345,6 +345,10 @@ def main():
     host = os.getenv('MCP_HOST', '0.0.0.0')
     port = int(os.getenv('MCP_PORT', '8032'))
 
+    # 针对较新版本 MCP SDK 的安全配置 (DNS Rebinding Protection)
+    # 如果通过环境变量 MCP_ENABLE_DNS_REBINDING_PROTECTION=false 禁用校验
+    # SDK 会自动检测相关的环境变量
+    
     print(f"Server running on transport: {transport}")
     if transport == 'sse':
         print(f"SSE server listening on http://{host}:{port}")
