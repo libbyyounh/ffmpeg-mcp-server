@@ -390,6 +390,32 @@ def list_output_videos():
     return video_files
 
 @mcp.tool()
+def list_videos_folder():
+    """
+    列出 /videos 目录下的所有视频文件。
+    该目录通常包含下载的远程视频或用户上传的视频。
+    
+    返回：
+    List[str] - 视频文件的绝对路径列表
+    """
+    VIDEO_EXTS = {'.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.webm', '.ts'}
+    
+    # Logic consistent with utils.py ensuring we look at the right 'videos' folder
+    current_file_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(current_file_dir, "../../"))
+    videos_dir = "/videos" if os.path.exists("/videos") else os.path.join(project_root, "videos")
+
+    if not os.path.exists(videos_dir):
+        return []
+            
+    video_files = []
+    for root, dirs, files in os.walk(videos_dir):
+        for file in files:
+            if os.path.splitext(file)[1].lower() in VIDEO_EXTS:
+                video_files.append(os.path.abspath(os.path.join(root, file)))
+    return video_files
+
+@mcp.tool()
 def delete_videos(video_paths: List[str]):
     """
     根据绝对路径批量删除视频文件。
