@@ -13,9 +13,6 @@ dependencies = [
 test = [
     "pytest>=7.0.0",
 ]
-classifiers = [
-    "Environment :: MacOS X",
-]
 [project.urls]
 Homepage = "https://github.com/video-creator/ffmpeg-mcp"
 
