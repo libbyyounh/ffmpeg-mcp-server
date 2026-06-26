@@ -16,11 +16,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # 验证 FFmpeg 安装
-RUN ffmpeg -version && ffprobe -version && ffplay -version || true
+RUN ffmpeg -version && ffprobe -version
 
 # 复制项目文件
-COPY pyproject.toml ./
-COPY README.md ./
+COPY pyproject.toml uv.lock README.md ./
 COPY src/ ./src/
 
 # 安装 uv (快速的 Python 包管理器)
@@ -46,7 +45,7 @@ VOLUME ["/videos", "/output"]
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8032/ || exit 1
+    CMD curl -f http://localhost:8032/health || exit 1
 
 # 运行服务
 CMD ["uv", "run", "ffmpeg-mcp"]

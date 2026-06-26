@@ -57,9 +57,9 @@ jobs:
 
             echo "${{ secrets.TCR_PASSWORD }}" | docker login --username=${{ secrets.TCR_USERNAME }} --password-stdin ${{ secrets.TCR_REGISTRY }}
 
-            docker compose pull app
+            docker compose pull ffmpeg-mcp
 
-            docker compose up -d app
+            docker compose up -d ffmpeg-mcp
 
             docker image prune -f
 
