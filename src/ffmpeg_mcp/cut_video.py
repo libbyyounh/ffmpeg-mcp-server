@@ -1,6 +1,7 @@
 import ffmpeg_mcp.ffmpeg as ffmpeg
 import ffmpeg_mcp.utils as utils
 import os
+import shlex
 import random
 import shutil
 import tempfile
@@ -28,16 +29,16 @@ def clip_video_ffmpeg(video_path, start = None, end = None, duration=None, outpu
     try:
         if (output_path == None):
             output_path = utils.get_default_output_path(video_path, "_clip")
-        cmd = f"-i \"{video_path}\" "
+        cmd = f"-i {shlex.quote(video_path)} "
         if (start != None):
             start_sec = utils.convert_to_seconds(start)
             cmd = f"{cmd} -ss {start_sec}"
         if (end == None and duration is not None):
             end = start_sec + utils.convert_to_seconds(duration)
         if (end != None):
-            end_sec = utils.convert_to_seconds(end) 
+            end_sec = utils.convert_to_seconds(end)
             cmd = f"{cmd} -to {end_sec}"
-        cmd = f"{cmd} -y \"{output_path}\""
+        cmd = f"{cmd} -y {shlex.quote(output_path)}"
         print(cmd)
         status_code, log = ffmpeg.run_ffmpeg(cmd, timeout=time_out)
         print(log)
@@ -83,7 +84,7 @@ def concat_videos(input_files: List[str], output_path: str = None,
                     f.write(f"file '{path_to_write}'\n")
             
             # 构建FFmpeg命令
-            cmd = f"-f concat -safe 0 -i \"{temp_list_file}\" -c copy -y \"{output_path}\""
+            cmd = f"-f concat -safe 0 -i {shlex.quote(temp_list_file)} -c copy -y {shlex.quote(output_path)}"
             return ffmpeg.run_ffmpeg(cmd)
         finally:
             # 清理临时文件
@@ -143,17 +144,17 @@ def concat_videos(input_files: List[str], output_path: str = None,
         if len(filter_str) == 0:
             return -1, f"{input_files[0]} 视频中不包含任何音视频流！！"
         # 构建输入参数和滤镜表达式
-        inputs_str = " ".join([f"-i \"{f}\"" for f in input_files])
-        cmd = f" {inputs_str} -lavfi '{filter_str}' {map} -y \"{output_path}\""
+        inputs_str = " ".join([f"-i {shlex.quote(f)}" for f in input_files])
+        cmd = f" {inputs_str} -lavfi '{filter_str}' {map} -y {shlex.quote(output_path)}"
         return ffmpeg.run_ffmpeg(cmd)
     
 
 def get_video_info(video_path: str):
-    cmd = f" -v error -show_streams -of json -i \"{video_path}\""
+    cmd = f" -v error -show_streams -of json -i {shlex.quote(video_path)}"
     return ffmpeg.run_ffprobe(cmd, timeout=60)
 
 def get_audio_info(audio_path: str):
-    cmd = f" -v error -show_streams -show_format -of json -i \"{audio_path}\""
+    cmd = f" -v error -show_streams -show_format -of json -i {shlex.quote(audio_path)}"
     return ffmpeg.run_ffprobe(cmd, timeout=60)
 
 def get_audio_duration(audio_path: str) -> float:
@@ -167,7 +168,7 @@ def get_audio_duration(audio_path: str) -> float:
     异常:
         ValueError: 无法获取音频时长
     """
-    cmd = f' -v error -show_entries format=duration -of csv=p=0 -i "{audio_path}"'
+    cmd = f' -v error -show_entries format=duration -of csv=p=0 -i {shlex.quote(audio_path)}'
     code, cmd_str, log = ffmpeg.run_ffprobe(cmd, timeout=60)
     if code != 0:
         raise ValueError(f"无法获取音频时长: {audio_path}. 错误: {log}")
@@ -248,10 +249,10 @@ def concat_videos_with_mp3(video_paths, audio_path, output_path=None,
                 seg_path = os.path.join(temp_dir, f"segment_{i:04d}.mp4")
                 if seg["duration"] < seg["full_duration"] - 0.01:
                     # 需要裁剪
-                    cmd = f'-i "{seg["path"]}" -t {seg["duration"]} -c copy -y "{seg_path}"'
+                    cmd = f'-i {shlex.quote(seg["path"])} -t {seg["duration"]} -c copy -y {shlex.quote(seg_path)}'
                 else:
                     # 使用完整视频
-                    cmd = f'-i "{seg["path"]}" -c copy -y "{seg_path}"'
+                    cmd = f'-i {shlex.quote(seg["path"])} -c copy -y {shlex.quote(seg_path)}'
                 code, log = ffmpeg.run_ffmpeg(cmd, timeout=300)
                 if code != 0:
                     return (-1, f"处理片段 {i} 失败: {log}", "")
@@ -264,14 +265,14 @@ def concat_videos_with_mp3(video_paths, audio_path, output_path=None,
                 for sf in segment_files:
                     f.write(f"file '{sf}'\n")
 
-            cmd = f'-f concat -safe 0 -i "{list_file}" -c copy -y "{merged_path}"'
+            cmd = f'-f concat -safe 0 -i {shlex.quote(list_file)} -c copy -y {shlex.quote(merged_path)}'
             code, log = ffmpeg.run_ffmpeg(cmd, timeout=600)
             if code != 0:
                 # 回退到重编码模式
                 print(f"快速拼接失败，回退到重编码模式: {log}")
-                inputs_str = " ".join([f'-i "{sf}"' for sf in segment_files])
+                inputs_str = " ".join([f'-i {shlex.quote(sf)}' for sf in segment_files])
                 filter_str = f"concat=n={len(segment_files)}:v=1:a=0[outv]"
-                cmd = f'{inputs_str} -lavfi \'{filter_str}\' -map \'[outv]\' -y "{merged_path}"'
+                cmd = f'{inputs_str} -lavfi \'{filter_str}\' -map \'[outv]\' -y {shlex.quote(merged_path)}'
                 code, log = ffmpeg.run_ffmpeg(cmd, timeout=600)
                 if code != 0:
                     return (-1, f"拼接失败: {log}", "")
@@ -279,12 +280,12 @@ def concat_videos_with_mp3(video_paths, audio_path, output_path=None,
             # Step 7: 替换/混合音频
             if mute_video_audio:
                 # 只保留MP3音频
-                cmd = f'-i "{merged_path}" -i "{audio_path}" -map 0:v -map 1:a -shortest -y "{output_path}"'
+                cmd = f'-i {shlex.quote(merged_path)} -i {shlex.quote(audio_path)} -map 0:v -map 1:a -shortest -y {shlex.quote(output_path)}'
             else:
                 # 混合视频原声和MP3
-                cmd = (f'-i "{merged_path}" -i "{audio_path}" '
+                cmd = (f'-i {shlex.quote(merged_path)} -i {shlex.quote(audio_path)} '
                        f'-filter_complex "[0:a][1:a]amix=inputs=2:weights=\'1 3\'[outa]" '
-                       f'-map 0:v -map "[outa]" -shortest -y "{output_path}"')
+                       f'-map 0:v -map "[outa]" -shortest -y {shlex.quote(output_path)}')
 
             code, log = ffmpeg.run_ffmpeg(cmd, timeout=600)
             if code != 0:
@@ -367,25 +368,25 @@ def concat_videos_with_mp3_video_first(video_paths, audio_path, output_path=None
                     f.write(f"file '{vi['path']}'\n")
 
             merged_path = os.path.join(temp_dir, "merged.mp4")
-            cmd = f'-f concat -safe 0 -i "{list_file}" -c copy -y "{merged_path}"'
+            cmd = f'-f concat -safe 0 -i {shlex.quote(list_file)} -c copy -y {shlex.quote(merged_path)}'
             code, log = ffmpeg.run_ffmpeg(cmd, timeout=600)
             if code != 0:
                 # 回退到重编码模式
                 print(f"快速拼接失败，回退到重编码模式: {log}")
-                inputs_str = " ".join([f'-i "{vi["path"]}"' for vi in video_infos])
+                inputs_str = " ".join([f'-i {shlex.quote(vi["path"])}' for vi in video_infos])
                 filter_str = f"concat=n={len(video_infos)}:v=1:a=0[outv]"
-                cmd = f'{inputs_str} -lavfi \'{filter_str}\' -map \'[outv]\' -y "{merged_path}"'
+                cmd = f'{inputs_str} -lavfi \'{filter_str}\' -map \'[outv]\' -y {shlex.quote(merged_path)}'
                 code, log = ffmpeg.run_ffmpeg(cmd, timeout=600)
                 if code != 0:
                     return (-1, f"拼接失败: {log}", "")
 
             # Step 6: 替换/混合音频，裁剪音频到视频总时长
             if mute_video_audio:
-                cmd = f'-i "{merged_path}" -i "{audio_path}" -map 0:v -map 1:a -t {total_video_duration} -y "{output_path}"'
+                cmd = f'-i {shlex.quote(merged_path)} -i {shlex.quote(audio_path)} -map 0:v -map 1:a -t {total_video_duration} -y {shlex.quote(output_path)}'
             else:
-                cmd = (f'-i "{merged_path}" -i "{audio_path}" '
+                cmd = (f'-i {shlex.quote(merged_path)} -i {shlex.quote(audio_path)} '
                        f'-filter_complex "[0:a][1:a]amix=inputs=2:weights=\'1 3\'[outa]" '
-                       f'-map 0:v -map "[outa]" -t {total_video_duration} -y "{output_path}"')
+                       f'-map 0:v -map "[outa]" -t {total_video_duration} -y {shlex.quote(output_path)}')
 
             code, log = ffmpeg.run_ffmpeg(cmd, timeout=600)
             if code != 0:
@@ -414,7 +415,7 @@ def video_play(video_path: str, speed, loop):
             audio_filter_str = f"-af atempo={speed}"
         if len(fmt_ctx.video_streams) > 0:
             video_filter_str = f"-vf setpts={1/speed}*PTS"
-    cmd = f" {cmd } {audio_filter_str} {video_filter_str}   -i \"{video_path}\""
+    cmd = f" {cmd } {audio_filter_str} {video_filter_str}   -i {shlex.quote(video_path)}"
     print(cmd)
     return ffmpeg.run_ffplay(cmd, timeout=60)
         
@@ -475,8 +476,8 @@ def overlay_video(background_video, overlay_video, output_path: str = None, posi
             x = f"(W-w)/2+{dx}"
             y = f"(H-h)/2+{dy}"   
             
-        cmd = f" -i \"{background_video}\" -i \"{overlay_video}\" -filter_complex \"[0:v][1:v]overlay=x={x}:y={y}[ov];[0:a][1:a]amix=inputs=2:weights='3 1'[oa]\" -map '[ov]' -map '[oa]'"
-        cmd = f"{cmd} -y \"{output_path}\""
+        cmd = f" -i {shlex.quote(background_video)} -i {shlex.quote(overlay_video)} -filter_complex \"[0:v][1:v]overlay=x={x}:y={y}[ov];[0:a][1:a]amix=inputs=2:weights='3 1'[oa]\" -map '[ov]' -map '[oa]'"
+        cmd = f"{cmd} -y {shlex.quote(output_path)}"
         print(cmd)
         status_code, log = ffmpeg.run_ffmpeg(cmd, timeout=1000)
         print(log)
@@ -499,8 +500,8 @@ def scale_video(video_path, width, height = -2,output_path: str = None):
         if (output_path == None):
             output_path = utils.get_default_output_path(video_path, "_scaled")
     
-        cmd = f" -i \"{video_path}\" -filter_complex \"scale={width}:{height}\""
-        cmd = f"{cmd} -y \"{output_path}\""
+        cmd = f" -i {shlex.quote(video_path)} -filter_complex \"scale={width}:{height}\""
+        cmd = f"{cmd} -y {shlex.quote(output_path)}"
         print(cmd)
         status_code, log = ffmpeg.run_ffmpeg(cmd, timeout=1000)
         print(log)
@@ -533,7 +534,7 @@ def extract_frames_from_video(video_path,fps=0, output_folder=None, format=0, to
         img_ext = "webp"
     output_path = os.path.join(output_folder, f'frame_%04d.{img_ext}')
     try:
-        cmd = f" -i \"{video_path}\""
+        cmd = f" -i {shlex.quote(video_path)}"
         # 执行 FFmpeg 命令
         if fps > 0:
             cmd = f" {cmd} -vf 'fps=1/{fps}'"
@@ -541,7 +542,7 @@ def extract_frames_from_video(video_path,fps=0, output_folder=None, format=0, to
             cmd = f" {cmd} -vsync 0"
         if (total_frames > 0):
             cmd = f" {cmd} -vframes {total_frames} "
-        cmd = f" {cmd} -y \"{output_path}\""
+        cmd = f" {cmd} -y {shlex.quote(output_path)}"
         status_code, log = ffmpeg.run_ffmpeg(cmd, timeout=1000)
         print(log)
         return {status_code, log, output_path}
