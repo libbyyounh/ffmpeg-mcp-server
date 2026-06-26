@@ -18,7 +18,7 @@
 | API 范围 | 15 个 MCP 工具（排除 play_video） | play_video 需要本地播放器，后端服务场景无意义 |
 | 认证方式 | 复用现有 Bearer Token | 统一认证，MCP_AUTH_TOKEN 环境变量 |
 | 服务模式 | 同一进程同一端口 | 最小改动，MCP SSE 和 REST API 共存 |
-| `play_video` | 不暴露为 HTTP API | ffplay 需要本地播放器，后端服务场景无意义 |
+| `play_video` | 已移除 | ffplay 需要本地播放器，MCP 和 HTTP 均不保留 |
 | `get_task_status` 不存在时 | 返回 404 | REST 语义更正确，与 MCP 的 200+error 有差异，已在 spec 中注明 |
 
 ## 3. 架构

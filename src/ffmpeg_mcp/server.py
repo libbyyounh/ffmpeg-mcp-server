@@ -295,19 +295,6 @@ def concat_videos_with_mp3_video_first(video_paths: List[str], audio_path: str,
     threading.Thread(target=run_task).start()
     return {"task_id": task_id, "status": "PENDING", "message": "Task submitted successfully"}
 
-@mcp.tool()
-def play_video(video_path, speed = 1, loop = 1):
-    """
-    使用 ffplay 播放视频文件，支持mkv,mp4,mov,avi,3gp等等
-
-    参数：
-    video_path(str) - 视频文件的路径。
-    speed(float) - 浮点型,播放速率,建议0.5-2之间。
-    loop(int) - 整形,是否循环播放,1:不循环,播放后就退出,0: 循环播放。
-    """
-    video_path = utils.ensure_local_path(video_path)
-    return cut_video.video_play(video_path,speed=speed,loop=loop)
-
 
 @mcp.tool()
 def overlay_video(background_video, overlay_video, output_path: str = None, position: int = 1,  dx = 0, dy = 0):
