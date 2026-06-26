@@ -148,9 +148,33 @@ def concat_videos(input_files: List[str], output_path: str = None,
 def get_video_info(video_path: str):
     cmd = f" -v error -show_streams -of json -i \"{video_path}\""
     return ffmpeg.run_ffprobe(cmd, timeout=60)
-        
-        
-        
+
+def get_audio_info(audio_path: str):
+    cmd = f" -v error -show_streams -show_format -of json -i \"{audio_path}\""
+    return ffmpeg.run_ffprobe(cmd, timeout=60)
+
+def get_audio_duration(audio_path: str) -> float:
+    """
+    获取音频文件时长（秒）
+
+    参数:
+        audio_path (str): 音频文件路径
+    返回:
+        float: 音频时长（秒）
+    异常:
+        ValueError: 无法获取音频时长
+    """
+    cmd = f' -v error -show_entries format=duration -of csv=p=0 -i "{audio_path}"'
+    code, cmd_str, log = ffmpeg.run_ffprobe(cmd, timeout=60)
+    if code != 0:
+        raise ValueError(f"无法获取音频时长: {audio_path}. 错误: {log}")
+    try:
+        return float(log.strip())
+    except (ValueError, TypeError) as e:
+        raise ValueError(f"无法解析音频时长: {log}. 错误: {e}")
+
+
+
 def video_play(video_path: str, speed, loop):
     speed = float(speed)
     loop = int(loop)
