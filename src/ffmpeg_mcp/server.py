@@ -188,7 +188,7 @@ def concat_videos(input_files: List[str], output_path: str = None,
 def get_video_info(video_path: str):
     """
     获取视频信息，包括时长，帧率，codec等
-    
+
     参数:
     video_path (str): 输入视频文件路径
     返回:
@@ -196,6 +196,61 @@ def get_video_info(video_path: str):
     """
     video_path = utils.ensure_local_path(video_path)
     return cut_video.get_video_info(video_path)
+
+@mcp.tool()
+def get_audio_info(audio_path: str):
+    """
+    获取音频信息，包括时长、采样率、声道数、编码格式、比特率等
+
+    参数:
+    audio_path (str): 输入音频文件路径（支持mp3、wav、aac、flac、ogg等格式）
+    返回:
+    音频详细信息（包含streams和format信息）
+    """
+    audio_path = utils.ensure_local_path(audio_path)
+    return cut_video.get_audio_info(audio_path)
+
+@mcp.tool()
+def concat_videos_with_mp3(video_paths: List[str], audio_path: str,
+                            output_path: str = None, mute_video_audio: bool = True,
+                            order: str = "sequence"):
+    """
+    根据音频时长拼接视频，视频过长则裁剪，过短则循环重复，最终输出以音频长度为准的视频。
+
+    参数:
+    video_paths (List[str]): 输入视频文件路径列表（支持远程URL）
+    audio_path (str): MP3音频文件路径，决定输出视频的时长（支持远程URL）
+    output_path (str): 输出路径，可选，不传则自动生成
+    mute_video_audio (bool): 是否静音视频原声。True=只保留MP3音频(默认), False=视频原声与MP3混合
+    order (str): 视频拼接顺序。sequence=按数组顺序(默认), random=随机抽取, reverse=倒序
+
+    返回:
+    异步任务，通过 get_task_status 查询结果
+    """
+    task_id = task_manager.create_task("concat_videos_with_mp3", {
+        "video_paths": video_paths, "audio_path": audio_path,
+        "output_path": output_path, "mute_video_audio": mute_video_audio, "order": order
+    })
+
+    def run_task():
+        task_manager.update_task(task_id, "RUNNING")
+        try:
+            local_videos = [utils.ensure_local_path(v) for v in video_paths]
+            local_audio = utils.ensure_local_path(audio_path)
+            result = cut_video.concat_videos_with_mp3(
+                local_videos, local_audio, output_path, mute_video_audio, order
+            )
+            if isinstance(result, (tuple, list)) and len(result) >= 3:
+                status, log, path = result[0], result[1], result[2]
+                task_manager.update_task(task_id, "COMPLETED",
+                    result={"status": status, "log": log, "path": path, "url": get_file_url(path)})
+            else:
+                task_manager.update_task(task_id, "COMPLETED", result=result)
+        except Exception as e:
+            task_manager.update_task(task_id, "FAILED", error=str(e))
+
+    threading.Thread(target=run_task).start()
+    return {"task_id": task_id, "status": "PENDING", "message": "Task submitted successfully"}
 
 @mcp.tool()
 def play_video(video_path, speed = 1, loop = 1):
