@@ -582,7 +582,12 @@ def main():
         try:
             # FastMCP.sse_app 是一个方法，调用 it 返回 Starlette 实例
             app = mcp.sse_app()
-            
+
+            # 挂载 REST API 路由
+            from ffmpeg_mcp.http_routes import routes
+            app.routes.extend(routes)
+            print(f"REST API mounted: {len(routes)} endpoints under /api/")
+
             # 添加 Token 认证中间件
             auth_token = os.getenv('MCP_AUTH_TOKEN')
             if auth_token:
