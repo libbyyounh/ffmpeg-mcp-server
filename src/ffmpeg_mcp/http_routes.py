@@ -441,9 +441,18 @@ async def extract_frames_from_video(request: Request):
     return success({"task_id": task_id, "status": "PENDING"}, "Task submitted successfully")
 
 
+# --- Health check ---
+
+async def health(request: Request):
+    """GET /health — 健康检查，无需认证"""
+    return success({"status": "ok"})
+
+
 # --- Route table ---
 
 routes = [
+    # Health check (no auth required, handled by TokenAuthMiddleware skip list)
+    Route("/health", health, methods=["GET"]),
     # Sync GET
     Route("/api/find_video_path", find_video_path, methods=["GET"]),
     Route("/api/get_video_info", get_video_info, methods=["GET"]),
