@@ -219,22 +219,6 @@ async def delete_videos(request: Request):
     return success(results)
 
 
-async def play_video(request: Request):
-    """POST /api/play_video — Body: {"video_path": "...", "speed": 1, "loop": 1}
-    ⚠️ 仅限本地开发环境，服务器/Docker 下不可用
-    """
-    body = await request.json()
-    video_path = body.get("video_path")
-    if not video_path:
-        return error("video_path is required")
-
-    speed = body.get("speed", 1)
-    loop = body.get("loop", 1)
-    video_path = utils.ensure_local_path(video_path)
-    result = cut_video.video_play(video_path, speed=speed, loop=loop)
-    return success(result)
-
-
 # --- Async POST endpoints (return task_id) ---
 
 async def clip_video(request: Request):
@@ -470,7 +454,6 @@ routes = [
     Route("/api/list_videos_folder", list_videos_folder, methods=["GET"]),
     # Sync POST
     Route("/api/delete_videos", delete_videos, methods=["POST"]),
-    Route("/api/play_video", play_video, methods=["POST"]),
     # Async POST
     Route("/api/clip_video", clip_video, methods=["POST"]),
     Route("/api/concat_videos", concat_videos, methods=["POST"]),
