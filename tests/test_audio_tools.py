@@ -12,11 +12,13 @@ class TestGetAudioInfo:
         result = mcp_client.call_tool("get_audio_info", {
             "audio_path": test_audio_medium,
         })
-        # get_audio_info 是同步工具，直接返回结果
-        assert result, f"未获取到结果"
-        # ffprobe 返回的是 tuple: (code, cmd, log)
+        # 同步工具返回 ffprobe tuple (code, cmd, log)，MCP 序列化为 [code, cmd, log]
+        # 或在某些 SDK 版本中只返回 code
         if isinstance(result, (list, tuple)):
             assert result[0] == 0, f"ffprobe 失败: {result}"
+        else:
+            # 返回值是 exit code，0 = 成功
+            assert result == 0, f"ffprobe 失败: {result}"
 
 
 class TestGetVideoInfo:
@@ -27,9 +29,10 @@ class TestGetVideoInfo:
         result = mcp_client.call_tool("get_video_info", {
             "video_path": test_video_url,
         })
-        assert result
         if isinstance(result, (list, tuple)):
             assert result[0] == 0, f"ffprobe 失败: {result}"
+        else:
+            assert result == 0, f"ffprobe 失败: {result}"
 
 
 class TestListTools:
