@@ -253,6 +253,49 @@ def concat_videos_with_mp3(video_paths: List[str], audio_path: str,
     return {"task_id": task_id, "status": "PENDING", "message": "Task submitted successfully"}
 
 @mcp.tool()
+def concat_videos_with_mp3_video_first(video_paths: List[str], audio_path: str,
+                                        output_path: str = None, mute_video_audio: bool = True,
+                                        order: str = "sequence"):
+    """
+    以视频长度为准拼接视频。如果视频总时长超过音频时长，报错【音频长度不足】。
+    音频足够时，拼接视频并裁剪多余音频到视频总时长。
+
+    参数:
+    video_paths (List[str]): 输入视频文件路径列表（支持远程URL）
+    audio_path (str): MP3音频文件路径（支持远程URL）
+    output_path (str): 输出路径，可选，不传则自动生成
+    mute_video_audio (bool): 是否静音视频原声。True=只保留MP3音频(默认), False=视频原声与MP3混合
+    order (str): 视频拼接顺序。sequence=按数组顺序(默认), random=随机抽取, reverse=倒序
+
+    返回:
+    异步任务，通过 get_task_status 查询结果
+    """
+    task_id = task_manager.create_task("concat_videos_with_mp3_video_first", {
+        "video_paths": video_paths, "audio_path": audio_path,
+        "output_path": output_path, "mute_video_audio": mute_video_audio, "order": order
+    })
+
+    def run_task():
+        task_manager.update_task(task_id, "RUNNING")
+        try:
+            local_videos = [utils.ensure_local_path(v) for v in video_paths]
+            local_audio = utils.ensure_local_path(audio_path)
+            result = cut_video.concat_videos_with_mp3_video_first(
+                local_videos, local_audio, output_path, mute_video_audio, order
+            )
+            if isinstance(result, (tuple, list)) and len(result) >= 3:
+                status, log, path = result[0], result[1], result[2]
+                task_manager.update_task(task_id, "COMPLETED",
+                    result={"status": status, "log": log, "path": path, "url": get_file_url(path)})
+            else:
+                task_manager.update_task(task_id, "COMPLETED", result=result)
+        except Exception as e:
+            task_manager.update_task(task_id, "FAILED", error=str(e))
+
+    threading.Thread(target=run_task).start()
+    return {"task_id": task_id, "status": "PENDING", "message": "Task submitted successfully"}
+
+@mcp.tool()
 def play_video(video_path, speed = 1, loop = 1):
     """
     使用 ffplay 播放视频文件，支持mkv,mp4,mov,avi,3gp等等

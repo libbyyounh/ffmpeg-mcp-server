@@ -300,6 +300,106 @@ def concat_videos_with_mp3(video_paths, audio_path, output_path=None,
         return (-1, f"concat_videos_with_mp3 失败: {str(e)}", "")
 
 
+def concat_videos_with_mp3_video_first(video_paths, audio_path, output_path=None,
+                                        mute_video_audio=True, order="sequence"):
+    """
+    以视频长度为准拼接视频并替换音频。
+    如果视频总时长超过音频时长，返回错误。
+    音频足够时，拼接视频并裁剪音频到视频总时长。
+
+    参数:
+        video_paths (list): 输入视频文件路径列表
+        audio_path (str): MP3音频文件路径
+        output_path (str): 输出路径，可选
+        mute_video_audio (bool): True=静音视频原声只保留MP3(默认), False=混合
+        order (str): 拼接顺序 sequence(默认)|random|reverse
+
+    返回:
+        tuple: (status_code, log, output_path)
+    """
+    try:
+        if output_path is None:
+            output_path = utils.get_default_output_path(audio_path, "_video_first")
+
+        # Step 1: 获取音频时长
+        audio_duration = get_audio_duration(audio_path)
+        if audio_duration <= 0:
+            return (-1, "音频时长无效", "")
+
+        # Step 2: 获取每个视频的时长和视频流信息
+        video_infos = []
+        for vp in video_paths:
+            fmt_ctx = ffmpeg.media_format_ctx(vp)
+            if fmt_ctx is None:
+                print(f"跳过无法解析的视频: {vp}")
+                continue
+            if len(fmt_ctx.video_streams) == 0:
+                print(f"跳过无视频流的文件: {vp}")
+                continue
+            v_duration = float(fmt_ctx.video_streams[0].duration or 0)
+            if v_duration <= 0:
+                v_duration = float(fmt_ctx.audio_streams[0].duration) if fmt_ctx.audio_streams else 0
+            if v_duration <= 0:
+                print(f"跳过时长为0的视频: {vp}")
+                continue
+            video_infos.append({"path": vp, "duration": v_duration})
+
+        if not video_infos:
+            return (-1, "没有有效的视频文件", "")
+
+        # Step 3: 按 order 参数排序
+        if order == "random":
+            random.shuffle(video_infos)
+        elif order == "reverse":
+            video_infos.reverse()
+
+        # Step 4: 检查视频总时长是否超过音频时长
+        total_video_duration = sum(vi["duration"] for vi in video_infos)
+        if total_video_duration > audio_duration:
+            return (-1, f"音频长度不足：视频总时长 {total_video_duration:.2f}s > 音频时长 {audio_duration:.2f}s", "")
+
+        # Step 5: 拼接所有视频（不需要裁剪/循环）
+        temp_dir = tempfile.mkdtemp(prefix="ffmpeg_mcp_")
+        try:
+            list_file = os.path.join(temp_dir, "filelist.txt")
+            with open(list_file, "w", encoding="utf-8") as f:
+                for vi in video_infos:
+                    f.write(f"file '{vi['path']}'\n")
+
+            merged_path = os.path.join(temp_dir, "merged.mp4")
+            cmd = f'-f concat -safe 0 -i "{list_file}" -c copy -y "{merged_path}"'
+            code, log = ffmpeg.run_ffmpeg(cmd, timeout=600)
+            if code != 0:
+                # 回退到重编码模式
+                print(f"快速拼接失败，回退到重编码模式: {log}")
+                inputs_str = " ".join([f'-i "{vi["path"]}"' for vi in video_infos])
+                filter_str = f"concat=n={len(video_infos)}:v=1:a=0[outv]"
+                cmd = f'{inputs_str} -lavfi \'{filter_str}\' -map \'[outv]\' -y "{merged_path}"'
+                code, log = ffmpeg.run_ffmpeg(cmd, timeout=600)
+                if code != 0:
+                    return (-1, f"拼接失败: {log}", "")
+
+            # Step 6: 替换/混合音频，裁剪音频到视频总时长
+            if mute_video_audio:
+                cmd = f'-i "{merged_path}" -i "{audio_path}" -map 0:v -map 1:a -t {total_video_duration} -y "{output_path}"'
+            else:
+                cmd = (f'-i "{merged_path}" -i "{audio_path}" '
+                       f'-filter_complex "[0:a][1:a]amix=inputs=2:weights=\'1 3\'[outa]" '
+                       f'-map 0:v -map "[outa]" -t {total_video_duration} -y "{output_path}"')
+
+            code, log = ffmpeg.run_ffmpeg(cmd, timeout=600)
+            if code != 0:
+                return (-1, f"替换音频失败: {log}", "")
+
+            return (0, f"成功，输出: {output_path}", output_path)
+
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    except Exception as e:
+        return (-1, f"concat_videos_with_mp3_video_first 失败: {str(e)}", "")
+
+
 def video_play(video_path: str, speed, loop):
     speed = float(speed)
     loop = int(loop)
