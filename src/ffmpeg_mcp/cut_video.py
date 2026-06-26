@@ -1,6 +1,9 @@
 import ffmpeg_mcp.ffmpeg as ffmpeg
 import ffmpeg_mcp.utils as utils
 import os
+import random
+import shutil
+import tempfile
 from typing import List
 from enum import Enum
 
@@ -173,6 +176,128 @@ def get_audio_duration(audio_path: str) -> float:
     except (ValueError, TypeError) as e:
         raise ValueError(f"无法解析音频时长: {log}. 错误: {e}")
 
+
+def concat_videos_with_mp3(video_paths, audio_path, output_path=None,
+                            mute_video_audio=True, order="sequence"):
+    """
+    根据音频时长拼接视频并替换音频
+
+    参数:
+        video_paths (list): 输入视频文件路径列表
+        audio_path (str): MP3音频文件路径，决定输出时长
+        output_path (str): 输出路径，可选
+        mute_video_audio (bool): True=静音视频原声只保留MP3(默认), False=混合
+        order (str): 拼接顺序 sequence(默认)|random|reverse
+
+    返回:
+        tuple: (status_code, log, output_path)
+    """
+    try:
+        if output_path is None:
+            output_path = utils.get_default_output_path(audio_path, "_with_mp3")
+
+        # Step 1: 获取音频时长
+        audio_duration = get_audio_duration(audio_path)
+        if audio_duration <= 0:
+            return (-1, "音频时长无效", "")
+
+        # Step 2: 获取每个视频的时长和视频流信息
+        video_infos = []
+        for vp in video_paths:
+            fmt_ctx = ffmpeg.media_format_ctx(vp)
+            if fmt_ctx is None:
+                print(f"跳过无法解析的视频: {vp}")
+                continue
+            if len(fmt_ctx.video_streams) == 0:
+                print(f"跳过无视频流的文件: {vp}")
+                continue
+            v_duration = float(fmt_ctx.video_streams[0].duration or 0)
+            if v_duration <= 0:
+                v_duration = float(fmt_ctx.audio_streams[0].duration) if fmt_ctx.audio_streams else 0
+            if v_duration <= 0:
+                print(f"跳过时长为0的视频: {vp}")
+                continue
+            video_infos.append({"path": vp, "duration": v_duration})
+
+        if not video_infos:
+            return (-1, "没有有效的视频文件", "")
+
+        # Step 3: 按 order 参数排序
+        if order == "random":
+            random.shuffle(video_infos)
+        elif order == "reverse":
+            video_infos.reverse()
+        # "sequence" 保持原序
+
+        # Step 4: 构建裁剪/循环计划 — 生成片段列表
+        segments = []
+        remaining = audio_duration
+        idx = 0
+        while remaining > 0.01:  # 浮点精度容差
+            vi = video_infos[idx % len(video_infos)]
+            use_duration = min(vi["duration"], remaining)
+            segments.append({"path": vi["path"], "duration": use_duration, "full_duration": vi["duration"]})
+            remaining -= use_duration
+            idx += 1
+
+        # Step 5: 处理每个片段（裁剪或使用完整视频）
+        temp_dir = tempfile.mkdtemp(prefix="ffmpeg_mcp_")
+        try:
+            segment_files = []
+            for i, seg in enumerate(segments):
+                seg_path = os.path.join(temp_dir, f"segment_{i:04d}.mp4")
+                if seg["duration"] < seg["full_duration"] - 0.01:
+                    # 需要裁剪
+                    cmd = f'-i "{seg["path"]}" -t {seg["duration"]} -c copy -y "{seg_path}"'
+                else:
+                    # 使用完整视频
+                    cmd = f'-i "{seg["path"]}" -c copy -y "{seg_path}"'
+                code, log = ffmpeg.run_ffmpeg(cmd, timeout=300)
+                if code != 0:
+                    return (-1, f"处理片段 {i} 失败: {log}", "")
+                segment_files.append(seg_path)
+
+            # Step 6: 拼接所有片段
+            merged_path = os.path.join(temp_dir, "merged.mp4")
+            list_file = os.path.join(temp_dir, "filelist.txt")
+            with open(list_file, "w", encoding="utf-8") as f:
+                for sf in segment_files:
+                    f.write(f"file '{sf}'\n")
+
+            cmd = f'-f concat -safe 0 -i "{list_file}" -c copy -y "{merged_path}"'
+            code, log = ffmpeg.run_ffmpeg(cmd, timeout=600)
+            if code != 0:
+                # 回退到重编码模式
+                print(f"快速拼接失败，回退到重编码模式: {log}")
+                inputs_str = " ".join([f'-i "{sf}"' for sf in segment_files])
+                filter_str = f"concat=n={len(segment_files)}:v=1:a=0[outv]"
+                cmd = f'{inputs_str} -lavfi \'{filter_str}\' -map \'[outv]\' -y "{merged_path}"'
+                code, log = ffmpeg.run_ffmpeg(cmd, timeout=600)
+                if code != 0:
+                    return (-1, f"拼接失败: {log}", "")
+
+            # Step 7: 替换/混合音频
+            if mute_video_audio:
+                # 只保留MP3音频
+                cmd = f'-i "{merged_path}" -i "{audio_path}" -map 0:v -map 1:a -shortest -y "{output_path}"'
+            else:
+                # 混合视频原声和MP3
+                cmd = (f'-i "{merged_path}" -i "{audio_path}" '
+                       f'-filter_complex "[0:a][1:a]amix=inputs=2:weights=\'1 3\'[outa]" '
+                       f'-map 0:v -map "[outa]" -shortest -y "{output_path}"')
+
+            code, log = ffmpeg.run_ffmpeg(cmd, timeout=600)
+            if code != 0:
+                return (-1, f"替换音频失败: {log}", "")
+
+            return (0, f"成功，输出: {output_path}", output_path)
+
+        finally:
+            # 清理临时目录
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    except Exception as e:
+        return (-1, f"concat_videos_with_mp3 失败: {str(e)}", "")
 
 
 def video_play(video_path: str, speed, loop):
