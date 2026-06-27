@@ -41,6 +41,7 @@ Thumbs.db
 
 # Environment variables
 .env
+.mcp.json
 
 # Video files and output
 videos/
