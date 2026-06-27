@@ -3,6 +3,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        USE_CN_MIRROR: ${USE_CN_MIRROR:-1}
+        PIP_INDEX: ${PIP_INDEX:-https://pypi.tuna.tsinghua.edu.cn/simple}
+        UV_INDEX: ${UV_INDEX:-https://pypi.tuna.tsinghua.edu.cn/simple}
     image: ffmpeg-mcp:latest
     container_name: ffmpeg-mcp-server
     ports:

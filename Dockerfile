@@ -4,9 +4,14 @@ FROM python:3.11-slim
 # 设置工作目录
 WORKDIR /app
 
-# 使用清华源替换默认源
-RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list.d/debian.sources || \
-    sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list
+# 构建参数：是否使用国内镜像源（本地构建传入 USE_CN_MIRROR=1 启用）
+ARG USE_CN_MIRROR=0
+
+# 可选：使用清华源替换默认源（仅在国内构建时启用）
+RUN if [ "$USE_CN_MIRROR" = "1" ]; then \
+        sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list.d/debian.sources || \
+        sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list; \
+    fi
 
 # 安装系统依赖和 FFmpeg
 RUN apt-get update && apt-get install -y \
@@ -22,19 +27,29 @@ RUN ffmpeg -version && ffprobe -version
 COPY pyproject.toml uv.lock README.md ./
 COPY src/ ./src/
 
+# 构建参数：pip/uv 镜像源（默认官方源）
+ARG PIP_INDEX=""
+ARG UV_INDEX=""
+
 # 安装 uv (快速的 Python 包管理器)
-RUN pip install --no-cache-dir uv -i https://pypi.tuna.tsinghua.edu.cn/simple
+RUN if [ -n "$PIP_INDEX" ]; then \
+        pip install --no-cache-dir uv -i "$PIP_INDEX"; \
+    else \
+        pip install --no-cache-dir uv; \
+    fi
 
 # 使用 uv 安装项目依赖
-RUN uv sync
+RUN if [ -n "$UV_INDEX" ]; then \
+        UV_INDEX_URL="$UV_INDEX" uv sync; \
+    else \
+        uv sync; \
+    fi
 
 # 设置环境变量
 ENV MCP_TRANSPORT=sse
 ENV MCP_HOST=0.0.0.0
 ENV MCP_PORT=8032
 ENV PYTHONUNBUFFERED=1
-ENV UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
-ENV PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 暴露端口
 EXPOSE 8032
