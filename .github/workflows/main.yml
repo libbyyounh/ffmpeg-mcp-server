@@ -42,8 +42,10 @@ jobs:
           push: true
           builder: ${{ steps.buildx.outputs.name }}
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=min
+          cache-from: |
+            type=registry,ref=${{ secrets.TCR_REGISTRY }}/${{ secrets.NAME_SPACE }}/${{ secrets.REPO }}:cache
+          cache-to: |
+            type=registry,ref=${{ secrets.TCR_REGISTRY }}/${{ secrets.NAME_SPACE }}/${{ secrets.REPO }}:cache,mode=max,image-manifest=true,oci-mediatypes=true
 
       - name: Deploy to Cloud Server
         uses: appleboy/ssh-action@master
