@@ -1,40 +1,57 @@
-.git
-.github
-.gitignore
-
-__pycache__
+# Python
+__pycache__/
 *.py[cod]
-*.pyo
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
+*$py.class
+*.so
+.Python
 .venv/
 venv/
+ENV/
+env/
 
-.env
-.env.*
-!.env.production
+# Git
+.git/
+.github/
+.gitignore
+.worktrees/
 
-*.md
-docs
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-.vscode
-.idea
+# OS
 .DS_Store
-*.log
+Thumbs.db
 
+# Project specific
 videos/
 output/
-outputs/
-media/
-tmp/
-temp/
-downloads/
-
+docs/
+tests/
+.env.example
+docker/
 *.mp4
+*.avi
 *.mov
 *.mkv
-*.avi
-*.webm
-*.wav
-*.mp3
+*.flv
+
+# Documentation (keep in image)
+# README.md
+# API_EXAMPLES.md
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Logs
+*.log
+
+# Docker
+docker-compose.yml
+.dockerignore
+Dockerfile

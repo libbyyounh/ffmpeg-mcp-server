@@ -9,10 +9,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Log in to TCR
         uses: docker/login-action@v3
@@ -35,6 +33,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
         with:
           driver: docker-container
+          driver-opts: image=moby/buildkit:latest
 
       - name: Build and Push
         uses: docker/build-push-action@v5
@@ -43,9 +42,8 @@ jobs:
           push: true
           builder: ${{ steps.buildx.outputs.name }}
           tags: ${{ steps.meta.outputs.tags }}
-          platforms: linux/amd64
           cache-from: type=gha
-          cache-to: type=gha,mode=min
+          cache-to: type=gha,mode=max
 
       - name: Deploy to Cloud Server
         uses: appleboy/ssh-action@master
@@ -55,16 +53,14 @@ jobs:
           password: ${{ secrets.SERVER_PASS }}
           port: 22
           script: |
-            set -e
-
             cd ${{ secrets.APP_PATH }}
 
-            echo "${{ secrets.TCR_PASSWORD }}" | docker login \
-              --username=${{ secrets.TCR_USERNAME }} \
-              --password-stdin ${{ secrets.TCR_REGISTRY }}
+            echo "${{ secrets.TCR_PASSWORD }}" | docker login --username=${{ secrets.TCR_USERNAME }} --password-stdin ${{ secrets.TCR_REGISTRY }}
 
             docker compose pull ffmpeg-mcp
+
             docker compose up -d ffmpeg-mcp
+
             docker image prune -f
 
             docker ps | grep ffmpeg-mcp
