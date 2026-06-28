@@ -85,7 +85,8 @@ def concat_videos(input_files: List[str], output_path: str = None,
             
             # 构建FFmpeg命令
             cmd = f"-f concat -safe 0 -i {shlex.quote(temp_list_file)} -c copy -y {shlex.quote(output_path)}"
-            return ffmpeg.run_ffmpeg(cmd)
+            code, log = ffmpeg.run_ffmpeg(cmd)
+            return (code, log, output_path)
         finally:
             # 清理临时文件
             if os.path.exists(temp_list_file):
@@ -146,7 +147,8 @@ def concat_videos(input_files: List[str], output_path: str = None,
         # 构建输入参数和滤镜表达式
         inputs_str = " ".join([f"-i {shlex.quote(f)}" for f in input_files])
         cmd = f" {inputs_str} -lavfi '{filter_str}' {map} -y {shlex.quote(output_path)}"
-        return ffmpeg.run_ffmpeg(cmd)
+        code, log = ffmpeg.run_ffmpeg(cmd)
+        return (code, log, output_path)
     
 
 def get_video_info(video_path: str):

@@ -270,9 +270,9 @@ async def concat_videos(request: Request):
         try:
             local_files = [utils.ensure_local_path(f) for f in input_files]
             result = cut_video.concat_videos(local_files, output_path, fast)
-            if isinstance(result, (tuple, list)) and len(result) >= 2:
-                code, log = result[:2]
-                task_manager.update_task(task_id, "COMPLETED", result={"status": code, "log": log})
+            if isinstance(result, (tuple, list)) and len(result) >= 3:
+                code, log, path = result[:3]
+                task_manager.update_task(task_id, "COMPLETED", result={"status": code, "log": log, "path": path, "url": _get_file_url(path)})
             else:
                 task_manager.update_task(task_id, "COMPLETED", result=result)
         except Exception as e:
