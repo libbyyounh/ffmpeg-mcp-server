@@ -197,7 +197,7 @@ def concat_videos_with_mp3(video_paths, audio_path, output_path=None,
     """
     try:
         if output_path is None:
-            output_path = utils.get_default_output_path(audio_path, "_with_mp3")
+            output_path = utils.get_default_output_path(audio_path, "_with_mp3", force_ext=".mp4")
 
         # Step 1: 获取音频时长
         audio_duration = get_audio_duration(audio_path)
@@ -322,7 +322,7 @@ def concat_videos_with_mp3_video_first(video_paths, audio_path, output_path=None
     """
     try:
         if output_path is None:
-            output_path = utils.get_default_output_path(audio_path, "_video_first")
+            output_path = utils.get_default_output_path(audio_path, "_video_first", force_ext=".mp4")
 
         # Step 1: 获取音频时长
         audio_duration = get_audio_duration(audio_path)

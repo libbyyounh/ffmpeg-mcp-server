@@ -87,10 +87,11 @@ def is_url(path: str) -> bool:
         return False
     return path.lower().startswith(('http://', 'https://'))
 
-def get_default_output_path(input_path: str, suffix: str = "_output") -> str:
+def get_default_output_path(input_path: str, suffix: str = "_output", force_ext: str = None) -> str:
     """
     为输入生成默认的输出路径。
     如果是 URL 或不在当前目录下的文件，默认保存到 /output 目录。
+    force_ext: 强制使用指定扩展名（如 ".mp4"），忽略输入文件的扩展名。
     """
     from urllib.parse import urlparse
     
@@ -112,7 +113,9 @@ def get_default_output_path(input_path: str, suffix: str = "_output") -> str:
         filename = os.path.basename(input_path)
     
     base, ext = os.path.splitext(filename)
-    if not ext:
+    if force_ext:
+        ext = force_ext
+    elif not ext:
         ext = ".mp4"
         
     return os.path.join(output_dir, f"{base}{suffix}{ext}")
